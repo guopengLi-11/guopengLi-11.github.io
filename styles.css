@@ -1,3 +1,46 @@
+    /* Fonts are served from this repository so the site has no Google Fonts dependency. */
+    @font-face {
+      font-family: "Allura";
+      src: url("assets/fonts/allura-latin-400-normal.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "DM Sans";
+      src: url("assets/fonts/dm-sans-latin-400-normal.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "DM Sans";
+      src: url("assets/fonts/dm-sans-latin-500-normal.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "DM Sans";
+      src: url("assets/fonts/dm-sans-latin-600-normal.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "DM Sans";
+      src: url("assets/fonts/dm-sans-latin-700-normal.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Libre Caslon Display";
+      src: url("assets/fonts/libre-caslon-display-latin-400-normal.woff2") format("woff2");
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+    }
 
     :root {
       --paper: #f4f6f4;
@@ -20,7 +63,7 @@
       margin: 0;
       background: var(--paper);
       color: var(--ink);
-      font-family: "DM Sans", Arial, sans-serif;
+      font-family: "DM Sans", "Helvetica Neue", "Segoe UI", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
       font-size: 16px;
       line-height: 1.7;
     }
@@ -49,10 +92,10 @@
     .wordmark {
       display: inline-flex; align-items: baseline; gap: 5px;
       color: var(--ink); text-decoration: none;
-      font-family: "Allura", cursive; font-size: 1.35rem; font-style: normal; font-weight: 400;
+      font-family: "Allura", "Brush Script MT", "Segoe Script", cursive; font-size: 1.35rem; font-style: normal; font-weight: 400;
       letter-spacing: .01em;
     }
-    .wordmark span { color: var(--sage); font-family: "DM Sans", sans-serif; font-size: .74rem; font-style: normal; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .wordmark span { color: var(--sage); font-family: "DM Sans", "Helvetica Neue", "Segoe UI", Arial, sans-serif; font-size: .74rem; font-style: normal; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
     .nav-list { display: flex; align-items: center; gap: 5px; margin: 0; padding: 0; list-style: none; }
     .nav-list a {
       display: block; padding: 9px 11px; border-radius: 7px;
