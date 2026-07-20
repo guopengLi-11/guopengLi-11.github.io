@@ -1,7 +1,7 @@
     /* Fonts are served from this repository so the site has no Google Fonts dependency. */
     @font-face {
       font-family: "Allura";
-      src: url("assets/fonts/allura-latin-400-normal.woff2") format("woff2");
+      src: url("assets/fonts/allura-latin-400-normal.woff2?v=20260720-2") format("woff2");
       font-style: normal;
       font-weight: 400;
       font-display: swap;
@@ -92,8 +92,9 @@
     .wordmark {
       display: inline-flex; align-items: baseline; gap: 5px;
       color: var(--ink); text-decoration: none;
-      font-family: "Allura", "Brush Script MT", "Segoe Script", cursive; font-size: 1.35rem; font-style: normal; font-weight: 400;
-      letter-spacing: .01em;
+      font-family: "Allura", "Brush Script MT", "Segoe Script", cursive; font-size: 1.48rem; font-style: normal; font-weight: 400;
+      letter-spacing: .01em; line-height: 1;
+      -webkit-text-stroke: .08px currentColor;
     }
     .wordmark span { color: var(--sage); font-family: "DM Sans", "Helvetica Neue", "Segoe UI", Arial, sans-serif; font-size: .74rem; font-style: normal; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
     .nav-list { display: flex; align-items: center; gap: 5px; margin: 0; padding: 0; list-style: none; }
