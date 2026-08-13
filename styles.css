@@ -177,7 +177,7 @@
     .career-stage > p:last-child { margin-bottom: 0; }
     .thesis-highlight { display: grid; grid-template-columns: 125px minmax(0,1fr); gap: 24px; align-items: center; margin-top: 18px; padding: 18px 20px; border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: 8px; background: #f8faf9; font-style: normal; }
     .thesis-highlight span { color: var(--sage); font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-    .thesis-highlight a { color: var(--blue-deep); font-family: Georgia, serif; font-size: 1rem; line-height: 1.45; }
+    .thesis-highlight .thesis-details > a { color: var(--blue-deep); font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif; font-size: 1rem; font-weight: 700; line-height: 1.45; }
     .thesis-details p { margin: 7px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.5; }
     .thesis-details p a { font-family: inherit; font-size: inherit; }
     .profile-section { display: grid; grid-template-columns: 245px minmax(0,1fr); gap: 42px; padding: 34px 0; border-top: 1px solid var(--line); }
@@ -215,7 +215,7 @@
     .publication-item { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 22px; padding: 25px 4px; border-bottom: 1px solid var(--line); }
     .publication-item.is-hidden { display: none; }
     .pub-number { color: #9aa9ad; font-family: Georgia, serif; font-size: 1.25rem; }
-    .pub-title { margin: 0 0 5px; color: var(--blue-deep); font-family: Georgia, serif; font-size: 1rem; font-weight: 600; line-height: 1.42; }
+    .pub-title { margin: 0 0 5px; color: var(--blue-deep); font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif; font-size: 1rem; font-weight: 700; line-height: 1.42; }
     .pub-title a { color: inherit; text-decoration-thickness: 1px; }
     .pub-authors, .pub-venue { margin: 0; color: var(--muted); font-size: .82rem; }
     .pub-venue { margin-top: 4px; color: var(--ink); font-weight: 400; }
@@ -243,7 +243,7 @@
     .conference-grid { display: grid; grid-template-columns: 1fr; border-top: 1px solid var(--line); }
     .conference-card { display: grid; grid-template-columns: 145px minmax(0,1fr); column-gap: 22px; row-gap: 1px; padding: 25px 4px; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); }
     .conference-card .year { padding-top: 3px; color: #89999e; font-size: .72rem; font-weight: 700; letter-spacing: .1em; }
-    .conference-card h3 { margin: 0; color: var(--blue-deep); font-family: Georgia, serif; font-size: 1.08rem; line-height: 1.35; }
+    .organized-conferences .subsection-title,\n    .conference-card h3 { font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif; font-weight: 700; }\n    .conference-card h3 { margin: 0; color: var(--blue-deep); font-size: 1.08rem; line-height: 1.35; }
     .conference-card p { grid-column: 2; margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.4; }
     .conference-card a { color: inherit; }
 
