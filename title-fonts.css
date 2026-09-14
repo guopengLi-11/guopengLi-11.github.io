@@ -2,7 +2,8 @@
 .pub-title,
 .thesis-highlight .thesis-details > a,
 .organized-conferences .subsection-title,
-.conference-card h3 {
+.conference-card h3,
+.event-feature h3 {
   font-family: "Lucida Grande", Helvetica, Arial, Verdana, sans-serif;
   font-weight: 700;
 }
