@@ -948,6 +948,10 @@ footer { min-height: 58px; }
     .hero .subtitle { color: rgba(255, 255, 255, .94); text-shadow: 0 1px 6px rgba(0, 0, 0, .3); }
     .hero:not(.hero-interior) .hero-inner { transform: translateY(-24px); }
     @media (max-width: 500px) { .hero:not(.hero-interior) .hero-inner { transform: translateY(-16px); } }
+    .schedule-row--break { min-height: 52px; padding-top: 10px; padding-bottom: 10px; }
+    .schedule-row--break > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+    .schedule-row--break p { display: block; margin: 0; }
+    .schedule-row--break p::before { content: "·"; margin-right: 8px; }
   </style>
 </head>
 <body>
