@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Integrable PDEs and Related Topics — In Honour of Prof. Patrick Gérard.">
+  <title>Integrable PDEs and Related Topics</title>
+  <style>
+
+:root {
+  --paper: #f6f8f7;
+  --surface: #ffffff;
+  --ink: #172126;
+  --muted: #5d686d;
+  --blue: #174e6a;
+  --blue-deep: #123f57;
+  --blue-soft: #e9f1f4;
+  --line: #d7e0e3;
+  --content-width: 1080px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.65;
+}
+
+a {
+  color: inherit;
+}
+
+.site-shell {
+  min-height: 100vh;
+}
+
+.hero {
+  position: relative;
+  display: grid;
+  height: 380px;
+  min-height: 380px;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.11), transparent 36%),
+    linear-gradient(135deg, var(--blue) 0%, var(--blue-deep) 100%);
+}
+
+.hero::after {
+  position: absolute;
+  right: -130px;
+  bottom: -210px;
+  width: 430px;
+  height: 430px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  content: "";
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  width: min(var(--content-width), calc(100% - 48px));
+  margin: 0 auto;
+  padding: 54px 0 50px;
+  text-align: center;
+}
+
+.hero-interior .hero-inner {
+  padding: 54px 0 50px;
+}
+
+.hero-interior h1 {
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+}
+
+.eyebrow {
+  margin: 0 0 14px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  letter-spacing: 0;
+}
+
+.brand-symbol {
+  color: rgba(255, 255, 255, 0.82);
+  font-family: "STIX Two Math", "Cambria Math", "Times New Roman", serif;
+  font-size: 0.98rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.brand-symbol sup {
+  position: relative;
+  top: -0.72em;
+  margin-left: 1px;
+  font-size: 0.56em;
+  font-weight: 400;
+  letter-spacing: 0;
+  vertical-align: baseline;
+}
+
+.brand-meta,
+.brand-separator {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.brand-meta {
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.brand-separator {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.9rem;
+}
+
+.hero h1 {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.35rem, 5.2vw, 4.25rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.subtitle {
+  margin: 20px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(0.98rem, 2vw, 1.12rem);
+  letter-spacing: 0.025em;
+}
+
+.subtitle span {
+  margin: 0 6px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.page-nav {
+  position: relative;
+  z-index: 2;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 18px rgba(18, 63, 87, 0.06);
+}
+
+.page-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 230px));
+  justify-content: center;
+  width: min(var(--content-width), calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0;
+  gap: 18px;
+}
+
+.page-nav-link {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 20px;
+  border: 1px solid #b9cbd2;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--blue);
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.page-nav-link:hover {
+  transform: translateY(-1px);
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.page-nav-link.is-active {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+
+main {
+  width: min(var(--content-width), calc(100% - 48px));
+  margin: 0 auto;
+  padding: 62px 0 84px;
+}
+
+.interior-main {
+  min-height: 450px;
+}
+
+.section-block {
+  margin-bottom: 58px;
+}
+
+.section-block > h2,
+.schedule-strip h2 {
+  margin: 0 0 22px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--blue);
+  color: var(--blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.55rem, 3vw, 1.95rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.intro-section {
+  width: 100%;
+}
+
+.lead-copy {
+  max-width: none;
+  margin: 0;
+  color: #39474d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.05rem, 1.8vw, 1.23rem);
+  line-height: 1.8;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  hyphenate-limit-chars: 6 3 3;
+  overflow-wrap: break-word;
+}
+
+.inline-math-brand {
+  color: var(--blue);
+  font-family: "STIX Two Math", "Cambria Math", "Times New Roman", serif;
+  font-size: 1.04em;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.inline-math-brand sup {
+  position: relative;
+  top: -0.48em;
+  margin-left: 1px;
+  font-size: 0.55em;
+  vertical-align: baseline;
+}
+
+.event-page-intro {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 34px;
+}
+
+.event-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(420px, 2.2fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.event-detail {
+  min-height: 150px;
+  padding: 28px 30px;
+}
+
+.event-detail + .event-detail {
+  border-left: 1px solid var(--line);
+}
+
+.detail-label {
+  margin: 0 0 8px;
+  color: var(--blue);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.detail-value {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.detail-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.detail-links a {
+  color: var(--blue);
+  text-underline-offset: 3px;
+}
+
+.venue-photo {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.campus-figure {
+  margin-bottom: 58px;
+  box-shadow: 0 14px 34px rgba(18, 63, 87, 0.08);
+}
+
+.campus-figure img {
+  height: clamp(270px, 36vw, 430px);
+}
+
+.venue-photo img {
+  display: block;
+  width: 100%;
+  height: clamp(280px, 42vw, 500px);
+  object-fit: cover;
+}
+
+.venue-photo figcaption {
+  position: absolute;
+  right: 18px;
+  bottom: 15px;
+  padding: 7px 11px;
+  border-radius: 4px;
+  background: rgba(18, 63, 87, 0.88);
+  color: #fff;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+.schedule-main {
+  padding-top: 52px;
+}
+
+.day-jump {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.day-jump a {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--blue);
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.day-jump a:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.day-jump a.is-active {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+
+.week-schedule {
+  display: grid;
+  gap: 26px;
+}
+
+.day-card {
+  overflow: hidden;
+  scroll-margin-top: 26px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(18, 63, 87, 0.055);
+}
+
+.day-card--single {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.day-card[hidden] {
+  display: none !important;
+}
+
+.day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 26px;
+  background: var(--blue);
+  color: #fff;
+}
+
+.day-heading p {
+  margin: 0 0 2px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.day-heading h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.day-heading > span {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.day-timeline {
+  display: grid;
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: 142px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  min-height: 78px;
+  padding: 16px 26px;
+  border-top: 1px solid #e4eaec;
+}
+
+.schedule-row:first-child {
+  border-top: 0;
+}
+
+.schedule-row time {
+  color: #33454d;
+  font-size: 0.86rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.schedule-row h4 {
+  margin: 0;
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.95rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.schedule-row p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.schedule-row > span {
+  padding: 5px 8px;
+  border-radius: 3px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.schedule-row--course {
+  border-left: 4px solid var(--blue);
+  background: #f1f6f8;
+}
+
+.schedule-row--talk {
+  border-left: 4px solid transparent;
+}
+
+.schedule-row--featured {
+  min-height: 250px;
+  align-items: start;
+  padding-top: 25px;
+  padding-bottom: 27px;
+  border-left: 4px solid var(--blue);
+  background:
+    linear-gradient(105deg, rgba(23, 78, 106, 0.075), transparent 52%),
+    #f9fbfb;
+}
+
+.schedule-row--featured time,
+.schedule-row--featured > span {
+  margin-top: 3px;
+}
+
+.schedule-row--opening {
+  min-height: 72px;
+  align-items: center;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.schedule-row--opening time,
+.schedule-row--opening > span {
+  margin-top: 0;
+}
+
+.schedule-row--opening .schedule-speaker {
+  margin-bottom: 2px !important;
+}
+
+.schedule-row--talk h4,
+.schedule-row--featured h4 {
+  max-width: 720px;
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.schedule-speaker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 7px;
+  margin: 0 0 7px !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.02em;
+}
+
+.schedule-speaker strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.schedule-speaker > span:first-of-type {
+  color: #91a4ac;
+}
+
+.schedule-speaker > span:last-of-type {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.schedule-abstract {
+  max-width: none;
+  margin-top: 17px;
+  padding: 14px 16px 15px;
+  border: 1px solid #d9e3e6;
+  border-left: 3px solid #9bb2bc;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.schedule-abstract strong {
+  display: block;
+  color: var(--blue);
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.schedule-abstract p {
+  margin: 6px 0 0;
+  color: #49575d;
+  font-size: 0.82rem;
+  line-height: 1.62;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+.schedule-row--break,
+.schedule-row--lunch {
+  min-height: 52px;
+  border-left: 4px solid transparent;
+  background: #fafbfb;
+}
+
+.schedule-row--break h4,
+.schedule-row--lunch h4 {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.schedule-row--break p {
+  display: inline;
+  margin-left: 7px;
+}
+
+.schedule-row--lunch {
+  background: #edf2f3;
+}
+
+.schedule-row--activity {
+  min-height: 112px;
+  border-left: 4px solid #7697a5;
+  background:
+    linear-gradient(90deg, rgba(23, 78, 106, 0.07), transparent 58%),
+    #f7f9f9;
+}
+
+.schedule-row--activity h4 {
+  color: var(--blue);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.schedule-row--activity > span {
+  border: 1px solid #9bb2bc;
+  background: transparent;
+  color: var(--blue);
+}
+
+.schedule-strip {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) 1.15fr;
+  align-items: end;
+  gap: 42px;
+  padding: 28px 30px;
+  border-left: 4px solid var(--blue);
+  border-radius: 4px;
+  background: var(--blue-soft);
+}
+
+.schedule-strip h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.schedule-strip > p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.organizer-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
+.organizer-card {
+  display: flex;
+  flex: 0 1 calc((100% - 28px) / 3);
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  min-height: 78px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.organizer-card p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.organizer-mark {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.course-card,
+.speaker-card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.course-card {
+  display: flex;
+  min-height: 126px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px 26px;
+  border-left: 4px solid var(--blue);
+  border-radius: 6px;
+}
+
+.course-card h3,
+.speaker-card h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.course-card p,
+.speaker-card p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.course-card > span,
+.speaker-card > span {
+  flex: 0 0 auto;
+  color: var(--blue);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.speaker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.speaker-card {
+  display: flex;
+  min-height: 132px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 7px;
+}
+
+footer {
+  padding: 28px 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+footer p {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .hero {
+    height: 380px;
+    min-height: 380px;
+  }
+
+  .hero-inner {
+    width: min(100% - 32px, var(--content-width));
+    padding: 54px 0 50px;
+  }
+
+  .subtitle span {
+    margin: 0 2px;
+  }
+
+  main {
+    width: min(100% - 32px, var(--content-width));
+    padding: 44px 0 64px;
+  }
+
+  .page-nav-inner {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(100% - 32px, var(--content-width));
+    gap: 10px;
+  }
+
+  .page-nav-link {
+    padding-right: 12px;
+    padding-left: 12px;
+    text-align: center;
+  }
+
+  .section-block {
+    margin-bottom: 46px;
+  }
+
+  .event-grid,
+  .schedule-strip,
+  .course-grid,
+  .speaker-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-detail {
+    min-height: auto;
+  }
+
+  .event-detail + .event-detail {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .schedule-strip {
+    align-items: start;
+    gap: 16px;
+  }
+
+  .schedule-row {
+    grid-template-columns: 124px minmax(0, 1fr) auto;
+    gap: 16px;
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .organizer-card {
+    flex-basis: calc((100% - 14px) / 2);
+  }
+
+  .venue-photo img {
+    height: 310px;
+  }
+
+  .campus-figure {
+    margin-bottom: 46px;
+  }
+}
+
+@media (max-width: 500px) {
+  .page-nav-inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px 0;
+  }
+
+  .organizer-card {
+    flex-basis: 100%;
+  }
+
+  .day-jump {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .day-jump a {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .day-heading {
+    padding: 20px;
+  }
+
+  .schedule-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 15px 20px;
+  }
+
+  .schedule-row--opening {
+    min-height: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .schedule-row > span {
+    justify-self: start;
+  }
+
+  .course-card {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .page-nav-link {
+    transition: none;
+  }
+}
+
+    .view[hidden] { display: none !important; }
+
+.hero { height: auto; min-height: 380px; }
+.hero h1 { max-width: 1020px; font-size: clamp(2.25rem, 4.7vw, 3.7rem); line-height: 1.14; }
+.hero-interior h1 { font-size: clamp(2.25rem, 4.7vw, 3.7rem); }
+.subtitle { margin-top: 24px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.05rem, 2vw, 1.3rem); }
+.empty-content { min-height: 66px; }
+.speakers-section .empty-content { min-height: 150px; }
+.schedule-empty { min-height: 300px; }
+.course-grid { grid-template-columns: 1fr; }
+.course-card { align-items: center; min-height: 110px; }
+main { min-height: 420px; }
+footer { min-height: 58px; }
+@media (max-width: 500px) { .hero-inner { padding: 48px 0; } .hero { min-height: 350px; } .course-card { align-items: flex-start; } }
+
+.organizer-card .affiliation { margin-top: 5px; color: var(--muted); font-size: 0.88rem; font-weight: 400; line-height: 1.55; }
+    .day-card--single { width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="hero" id="site-hero">
+      <div class="hero-inner">
+        <h1 id="page-title">Integrable PDEs and Related Topics</h1>
+        <p class="subtitle" id="page-subtitle">In Honour of Prof. Patrick Gérard</p>
+      </div>
+    </header>
+    <nav class="page-nav" aria-label="Primary navigation">
+      <div class="page-nav-inner">
+        <a class="page-nav-link is-active" href="#home" data-target="home" aria-current="page">Home</a>
+        <a class="page-nav-link" href="#event-information" data-target="event-information">Event Information</a>
+        <a class="page-nav-link" href="#schedule-monday" data-target="schedule">Schedule of the Event</a>
+      </div>
+    </nav>
+    <main>
+      <div class="view" data-view="home">
+        <section id="overview" class="section-block intro-section">
+          <h2>Overview</h2>
+          <p class="lead-copy">The past five years have seen rapid progress in integrable systems, opening up exciting directions and deepening their connections with other areas of partial differential equations. At the heart of this meeting is a week-long mini-course delivered by Professor Patrick Gérard of Université Paris-Saclay. We are honoured to welcome him to share a selection of recent developments and perspectives in integrable PDEs, offering participants an opportunity to engage closely with his ideas and explore the questions that animate this rapidly developing field.</p>
+          <p class="lead-copy" style="margin-top: 20px;">Held in honour of Professor Gérard, the meeting will also bring together researchers from China and abroad working on integrable systems, fluid dynamics, and dispersive equations. His lectures will provide a focal point for a week of discussion and exchange, connecting the themes of the mini-course with complementary approaches across these fields. Through lectures and informal conversations, we hope to develop a shared understanding of recent advances, identify fruitful connections, and inspire new collaborations.</p>
+        </section>
+        <section class="section-block">
+          <h2>Date &amp; Venue</h2>
+          <div class="event-grid">
+            <article class="event-detail"><p class="detail-label">Date</p><p class="detail-value">January 4–8, 2027</p></article>
+            <article class="event-detail venue-detail">
+              <p class="detail-label">Venue</p>
+              <p class="detail-value">Beijing Institute of Technology, Liangxiang Campus, Wen-Cui Building E, Room 708</p>
+              <p class="detail-links">
+                <a href="https://cn.bing.com/maps?q=Beijing+Institute+of+Technology+Liangxiang+Campus" target="_blank" rel="noreferrer">Bing Map</a>
+                <span aria-hidden="true">·</span>
+                <a href="https://zhenyao-sun.github.io/Files/Direction2BITMath.pdf" target="_blank" rel="noreferrer">Campus Map (PDF)</a>
+              </p>
+            </article>
+          </div>
+        </section>
+        <section class="section-block organizers-section">
+          <h2>Organizers</h2>
+          <div class="organizer-grid">
+            <article class="organizer-card"><span class="organizer-mark" aria-hidden="true"></span><div><p>Jiao He</p><p class="affiliation">Université Paris-Saclay</p></div></article>
+            <article class="organizer-card"><span class="organizer-mark" aria-hidden="true"></span><div><p>Guopeng Li</p><p class="affiliation">Beijing Institute of Technology</p></div></article>
+            <article class="organizer-card"><span class="organizer-mark" aria-hidden="true"></span><div><p>Jiaqi Liu</p><p class="affiliation">The University of the Chinese Academy of Sciences</p></div></article>
+          </div>
+        </section>
+      </div>
+      <div class="view" data-view="event-information" hidden>
+        <section class="section-block" id="mini-courses">
+          <h2>Mini-Courses</h2>
+          <div class="course-grid">
+            <article class="course-card"><div><h3>Patrick Gérard</h3><p>Université Paris-Saclay</p></div></article>
+          </div>
+        </section>
+        <section class="section-block speakers-section">
+          <h2>Confirmed Speakers</h2>
+          <div class="speaker-grid empty-content"></div>
+        </section>
+        <section class="section-block" id="registration">
+          <h2>Registration</h2>
+          <p class="lead-copy">If you are interested in attending this event, please contact Guopeng Li at <a href="mailto:guopeng.li@bit.edu.cn">guopeng.li@bit.edu.cn</a>. Subject to the availability of funding, we may be able to offer local accommodation and/or travel support to participants.</p>
+        </section>
+      </div>
+      <div class="view schedule-main" data-view="schedule" hidden>
+          <nav class="day-jump" aria-label="Choose a day">
+            <a href="#schedule-monday" data-day-link="monday">Mon</a><a href="#schedule-tuesday" data-day-link="tuesday">Tue</a><a href="#schedule-wednesday" data-day-link="wednesday">Wed</a><a href="#schedule-thursday" data-day-link="thursday">Thu</a><a href="#schedule-friday" data-day-link="friday">Fri</a>
+          </nav>
+
+          <div class="week-schedule">
+            <section class="day-card day-card--single" data-day="monday">
+              <header class="day-heading"><div><p>4 January 2027</p><h3>Monday</h3></div><span>Room 708</span></header>
+              <div class="day-timeline">
+                <article class="schedule-row schedule-row--talk"><time>09:00–09:30</time><div></div></article>
+                <article class="schedule-row schedule-row--talk"><time>09:30–09:40</time><div></div></article>
+                <article class="schedule-row schedule-row--talk"><time>09:40–10:40</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>10:40–11:00</time><div><h4>Tea break</h4><p>20 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>11:00–12:00</time><div></div></article>
+                <article class="schedule-row schedule-row--lunch"><time>12:00–14:00</time><div><h4>Lunch break</h4></div></article>
+                <article class="schedule-row schedule-row--talk"><time>14:00–15:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>15:00–15:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>15:05–16:05</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>16:05–16:30</time><div><h4>Tea break</h4><p>25 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>16:30–17:30</time><div></div></article>
+              </div>
+            </section>
+
+            <section class="day-card day-card--single" data-day="tuesday">
+              <header class="day-heading"><div><p>5 January 2027</p><h3>Tuesday</h3></div><span>Room 708</span></header>
+              <div class="day-timeline">
+                <article class="schedule-row schedule-row--talk"><time>09:00–10:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>10:00–10:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>10:05–11:05</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>11:05–11:30</time><div><h4>Tea break</h4><p>25 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>11:30–12:30</time><div></div></article>
+                <article class="schedule-row schedule-row--lunch"><time>12:30–14:00</time><div><h4>Lunch break</h4></div></article>
+                <article class="schedule-row schedule-row--talk"><time>14:00–15:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>15:00–15:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>15:05–16:05</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>16:05–16:30</time><div><h4>Tea break</h4><p>25 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>16:30–17:30</time><div></div></article>
+              </div>
+            </section>
+
+            <section class="day-card day-card--single" data-day="wednesday">
+              <header class="day-heading"><div><p>6 January 2027</p><h3>Wednesday</h3></div><span>Room 708</span></header>
+              <div class="day-timeline">
+                <article class="schedule-row schedule-row--talk"><time>09:00–10:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>10:00–10:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>10:05–11:05</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>11:05–11:30</time><div><h4>Tea break</h4><p>25 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>11:30–12:30</time><div></div></article>
+                <article class="schedule-row schedule-row--lunch"><time>12:30–14:00</time><div><h4>Lunch break</h4></div></article>
+                <article class="schedule-row schedule-row--talk"><time>14:00–17:30</time><div></div></article>
+              </div>
+            </section>
+
+            <section class="day-card day-card--single" data-day="thursday">
+              <header class="day-heading"><div><p>7 January 2027</p><h3>Thursday</h3></div><span>Room 708</span></header>
+              <div class="day-timeline">
+                <article class="schedule-row schedule-row--talk"><time>09:00–10:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>10:00–10:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>10:05–11:05</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>11:05–11:30</time><div><h4>Tea break</h4><p>25 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>11:30–12:30</time><div></div></article>
+                <article class="schedule-row schedule-row--lunch"><time>12:30–14:00</time><div><h4>Lunch break</h4></div></article>
+                <article class="schedule-row schedule-row--talk"><time>14:00–15:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>15:00–15:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>15:05–16:05</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>16:05–16:30</time><div><h4>Tea break</h4><p>25 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>16:30–17:30</time><div></div></article>
+              </div>
+            </section>
+
+            <section class="day-card day-card--single" data-day="friday">
+              <header class="day-heading"><div><p>8 January 2027</p><h3>Friday</h3></div><span>Room 708</span></header>
+              <div class="day-timeline">
+                <article class="schedule-row schedule-row--talk"><time>09:00–10:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>10:00–10:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>10:05–11:05</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>11:05–11:30</time><div><h4>Tea break</h4><p>25 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>11:30–12:30</time><div></div></article>
+                <article class="schedule-row schedule-row--lunch"><time>12:30–14:00</time><div><h4>Lunch break</h4></div></article>
+                <article class="schedule-row schedule-row--talk"><time>14:00–15:00</time><div></div></article>
+                <article class="schedule-row schedule-row--break"><time>15:00–15:05</time><div><h4>Short break</h4><p>5 minutes</p></div></article>
+                <article class="schedule-row schedule-row--talk"><time>15:05–16:05</time><div></div></article>
+              </div>
+            </section>
+        </div>
+      </div>
+    </main>
+    <footer></footer>
+  </div>
+  <script>
+    (() => {
+      const conferenceTitle = 'Integrable PDEs and Related Topics';
+      const config = {
+        home: { title: conferenceTitle, subtitle: 'In Honour of Prof. Patrick Gérard' },
+        'event-information': { title: 'Event Information', subtitle: conferenceTitle },
+        schedule: { title: 'Schedule of the Event', subtitle: conferenceTitle }
+      };
+      function render() {
+        const requested = window.location.hash.slice(1);
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+        const day = requested.startsWith('schedule-') ? requested.slice(9) : 'monday';
+        const selected = requested === 'schedule' || (requested.startsWith('schedule-') && days.includes(day)) ? 'schedule' : Object.hasOwn(config, requested) ? requested : 'home';
+        document.querySelectorAll('[data-day]').forEach(card => { card.hidden = card.dataset.day !== day; });
+        document.querySelectorAll('[data-day-link]').forEach(link => {
+          const active = link.dataset.dayLink === day;
+          link.classList.toggle('is-active', active);
+          if (active) link.setAttribute('aria-current', 'page');
+          else link.removeAttribute('aria-current');
+        });
+        document.querySelectorAll('[data-view]').forEach(view => { view.hidden = view.dataset.view !== selected; });
+        document.querySelectorAll('[data-target]').forEach(link => {
+          const active = link.dataset.target === selected;
+          link.classList.toggle('is-active', active);
+          if (active) link.setAttribute('aria-current', 'page');
+          else link.removeAttribute('aria-current');
+        });
+        document.getElementById('site-hero').classList.toggle('hero-interior', selected !== 'home');
+        document.getElementById('page-title').textContent = config[selected].title;
+        document.getElementById('page-subtitle').textContent = config[selected].subtitle;
+        document.title = selected === 'home' ? conferenceTitle : config[selected].title + ' — ' + conferenceTitle;
+      }
+      window.addEventListener('hashchange', () => {
+        render();
+        window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>
