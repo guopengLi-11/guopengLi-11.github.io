@@ -1130,10 +1130,24 @@ footer { min-height: 58px; }
         document.getElementById('page-title').textContent = config[selected].title;
         document.getElementById('page-subtitle').textContent = config[selected].subtitle;
         document.title = 'Integrable-PG 2027';
+        if (selected === 'schedule') {
+          const schedule = document.querySelector('.week-schedule');
+          scheduleHeight = Math.max(scheduleHeight, schedule.offsetHeight);
+          schedule.style.minHeight = scheduleHeight + 'px';
+        }
+        activeView = selected;
       }
+      let activeView;
+      let scheduleHeight = 0;
       window.addEventListener('hashchange', () => {
+        const previousView = activeView;
+        const scrollPosition = window.scrollY;
         render();
-        window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        if (previousView === 'schedule' && activeView === 'schedule') {
+          window.scrollTo({ top: scrollPosition, behavior: 'instant' });
+        } else {
+          window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        }
       });
       render();
     })();
