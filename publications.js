@@ -13,7 +13,7 @@ const publications = [
       {authors:"with Á. Bényi, R. H. Torres, T. Oh",title:"Compact bilinear operators and paraproducts revisited",venue:"Canadian Mathematical Bulletin 68 (2025), no. 1, 44–59",year:"2025",links:[["Journal","https://doi.org/10.4153/S000843952400047X"],["arXiv","https://arxiv.org/abs/2405.08412"]]},
       {authors:"with J. Forlano, T. Zhao",title:"Unconditional deep-water limit of the intermediate long wave equation in low regularity",venue:"Nonlinear Differential Equations and Applications NoDEA 32 (2025), no. 2, Paper 28",year:"2025",links:[["Journal","https://doi.org/10.1007/s00030-025-01037-7"],["arXiv","https://arxiv.org/abs/2403.06554"]]},
       {authors:"with L. Tao, T. Zhao",title:"Global well-posedness of the energy-critical stochastic Hartree nonlinear wave equation",venue:"Stochastic Partial Differential Equations: Analysis and Computations (2025)",year:"2025",links:[["Journal","https://doi.org/10.1007/s40072-025-00389-6"],["arXiv","https://arxiv.org/abs/2310.14517v2"]]},
-      {authors:"with A. Chapouto, T. Oh",title:"Deep-water and shallow-water limits of statistical equilibria for the intermediate long wave equation",venue:"Preprint",year:"2024",links:[["arXiv","https://arxiv.org/abs/2409.06905"]]},
+      {authors:"with A. Chapouto, T. Oh",title:"Deep-water and shallow-water limits of statistical equilibria for the intermediate long wave equation",status:"to appear in",venue:"Journal of the European Mathematical Society",year:"2024",links:[["arXiv","https://arxiv.org/abs/2409.06905"]]},
       {authors:"with A. Chapouto, J. Forlano, T. Oh, D. Pilod",title:"Intermediate long wave equation in negative Sobolev spaces",venue:"Proceedings of the American Mathematical Society, Series B 11 (2024), 452–468",year:"2024",links:[["Journal","https://doi.org/10.1090/bproc/206"],["arXiv","https://arxiv.org/abs/2311.08142"]]},
       {authors:"with A. Chapouto, T. Oh, D. Pilod",title:"Deep-water limit of the intermediate long wave equation in L²",venue:"Mathematical Research Letters 31 (2024), no. 6, 1655–1692",year:"2024",links:[["Journal","https://link.intlpress.com/JDetail/1888970445406416898"],["arXiv","https://arxiv.org/abs/2311.07997"]]},
       {authors:"with E. Brun, R. Liu",title:"Global well-posedness of the energy-critical stochastic nonlinear wave equations",venue:"Journal of Differential Equations 397 (2024), 316–348",year:"2024",links:[["Journal","https://doi.org/10.1016/j.jde.2024.03.032"],["arXiv","https://arxiv.org/abs/2309.14946"]]},
@@ -52,7 +52,7 @@ function renderPublications() {
       `<a href="${url}" target="_blank" rel="noreferrer">${label} ↗</a>`
     ).join("");
     const number = String(publications.indexOf(p) + 1).padStart(2, "0");
-    const venueLine = p.status ? `${p.status} <strong class="pub-journal">${p.venue}</strong> · ${p.year}` : p.venue === "Preprint" ? `Preprint · ${p.year}` : formatVenue(p.venue);
+    const venueLine = p.status ? `${p.status} <strong class="pub-journal">${p.venue}</strong>` : p.venue === "Preprint" ? `Preprint · ${p.year}` : formatVenue(p.venue);
     return `<li class="publication-item"><span class="pub-number">${number}</span><div><h3 class="pub-title">${title}</h3>${p.authors ? `<p class="pub-authors">(${p.authors})</p>` : ""}<p class="pub-venue">${venueLine}</p>${links ? `<div class="pub-links">${links}</div>` : ""}</div></li>`;
   }).join("");
 
