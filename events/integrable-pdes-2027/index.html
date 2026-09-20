@@ -957,6 +957,38 @@ footer { min-height: 58px; }
     .organizer-mark { margin-top: calc((1em * 1.65 - 9px) / 2); }
     @media (min-width: 761px) { .hero { min-height: max(380px, 25vw); } }
     @media (min-width: 761px) { .speakers-section .speaker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .participant-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.participant {
+  min-width: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.participant h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.participant p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .participant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; }
+}
+@media (max-width: 420px) {
+  .participant-grid { grid-template-columns: 1fr; }
+}
   </style>
 </head>
 <body>
@@ -1032,6 +1064,24 @@ footer { min-height: 58px; }
         <section class="section-block" id="registration">
           <h2>Registration</h2>
           <p class="lead-copy">If you are interested in attending this event, please contact Guopeng Li at <a href="mailto:guopeng.li@bit.edu.cn">guopeng.li@bit.edu.cn</a>. Subject to the availability of funding, we may be able to offer local accommodation and/or travel support to participants.</p>
+        </section>
+        <section class="section-block participants-section" id="participants">
+          <h2>Participants</h2>
+          <ul class="participant-grid">
+            <li class="participant"><h3>Rana Badreddine</h3><p>University of Edinburgh</p></li>
+            <li class="participant"><h3>Xilin Chen</h3><p>Georgetown University</p></li>
+            <li class="participant"><h3>Chenjie Fan</h3><p>Academy of Mathematics and System Science</p></li>
+            <li class="participant"><h3>Patrick Gérard</h3><p>Université Paris-Saclay</p></li>
+            <li class="participant"><h3>Emmanuel Grenier</h3><p>Academy of Mathematics and System Science</p></li>
+            <li class="participant"><h3>Jianlei Huang</h3><p>Georgetown University</p></li>
+            <li class="participant"><h3>Jiaqi Liu</h3><p>University of the Chinese Academy of Sciences</p></li>
+            <li class="participant"><h3>Ruoyuan Liu</h3><p>University of Bonn</p></li>
+            <li class="participant"><h3>Shao Liu</h3><p>Beijing Institute of Technology</p></li>
+            <li class="participant"><h3>Chenmin Sun</h3><p>Université Paris-Est Créteil</p></li>
+            <li class="participant"><h3>Yuanhong Tian</h3><p>Beijing Institute of Technology</p></li>
+            <li class="participant"><h3>Haitian Yue</h3><p>ShanghaiTech University</p></li>
+            <li class="participant"><h3>Yiwei Zheng</h3><p>Beijing Institute of Technology</p></li>
+          </ul>
         </section>
       </div>
       <div class="view schedule-main" data-view="schedule" hidden>
