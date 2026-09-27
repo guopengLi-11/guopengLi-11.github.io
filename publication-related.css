@@ -6,14 +6,15 @@
 }
 .pub-related > li { position: relative; }
 .pub-related > li::before {
-  content: "";
+  content: "\21B3";
   position: absolute;
   left: -20px;
-  top: 8px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--sand);
+  top: 0;
+  color: var(--muted);
+  font-family: Arial, sans-serif;
+  font-size: .85rem;
+  font-weight: 400;
+  line-height: 1.54;
 }
 .pub-related > li + li { margin-top: 12px; }
 .pub-related .pub-title { font-size: .92rem; }
