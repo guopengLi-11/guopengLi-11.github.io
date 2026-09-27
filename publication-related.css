@@ -1,0 +1,15 @@
+.pub-related {
+  margin: 16px 0 0;
+  padding: 12px 0 0 20px;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+.pub-related > li { position: relative; }
+.pub-related > li::before {
+  content: "–";
+  position: absolute;
+  left: -20px;
+  color: var(--muted);
+}
+.pub-related > li + li { margin-top: 12px; }
+.pub-related .pub-title { font-size: .92rem; }

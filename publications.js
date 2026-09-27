@@ -1,7 +1,6 @@
 const publications = [
       {authors:"with J. Li, S. Liu, N. Tzvetkov, T. Oh",title:"Probabilistic well-posedness of dispersive PDEs beyond variance blowup II: quadratic nonlinear wave equation",venue:"Preprint",year:"2026",links:[]},
       {authors:"with A. Chapouto, M. Gubinelli, J. Li, T. Oh",title:"Nonlinear PDEs with modulated dispersion III: multiplicative noises",venue:"Preprint",year:"2026",links:[["arXiv","https://arxiv.org/abs/2607.08385"]]},
-      {authors:"with A. Chapouto, T. Oh",title:"Deep- and shallow-water convergence of the generalized Gibbs measures for the intermediate long wave equation",venue:"Journées Équations aux Dérivées Partielles (2025), Exposé no. 1, 16 p.",year:"2025",links:[["Article","https://proceedings.centre-mersenne.org/articles/10.5802/jedp.692/"]]},
       {authors:"with A. Chapouto, B. Harrop-Griffiths, T. Oh",title:"On the singular nature of shallow-water convergence of the intermediate long wave equation on the real line",venue:"International Mathematics Research Notices (2026), no. 18, rnag195",year:"2026",links:[["Journal","https://doi.org/10.1093/imrn/rnag195"],["arXiv","https://arxiv.org/abs/2602.20695"]]},
       {authors:"with J. Li, L. Tolomeo",title:"A remark on the log-Sobolev inequality for the Gibbs measure of the focusing Schrödinger equation",venue:"Journal of Dynamics and Differential Equations (2026)",year:"2026",links:[["Journal","https://link.springer.com/article/10.1007/s10884-026-10509-y"],["arXiv","https://arxiv.org/abs/2512.03897"]]},
       {authors:"with A. Chapouto, T. Oh, T. Zhao",title:"Shallow-water convergence of the intermediate long wave equation in L²",venue:"Preprint",year:"2025",links:[["arXiv","https://arxiv.org/abs/2511.15905"]]},
@@ -13,7 +12,7 @@ const publications = [
       {authors:"with Á. Bényi, R. H. Torres, T. Oh",title:"Compact bilinear operators and paraproducts revisited",venue:"Canadian Mathematical Bulletin 68 (2025), no. 1, 44–59",year:"2025",links:[["Journal","https://doi.org/10.4153/S000843952400047X"],["arXiv","https://arxiv.org/abs/2405.08412"]]},
       {authors:"with J. Forlano, T. Zhao",title:"Unconditional deep-water limit of the intermediate long wave equation in low regularity",venue:"Nonlinear Differential Equations and Applications NoDEA 32 (2025), no. 2, Paper 28",year:"2025",links:[["Journal","https://doi.org/10.1007/s00030-025-01037-7"],["arXiv","https://arxiv.org/abs/2403.06554"]]},
       {authors:"with L. Tao, T. Zhao",title:"Global well-posedness of the energy-critical stochastic Hartree nonlinear wave equation",venue:"Stochastics and Partial Differential Equations: Analysis and Computations 14 (2026), no. 3, 1226–1265",year:"2026",links:[["Journal","https://doi.org/10.1007/s40072-025-00389-6"],["arXiv","https://arxiv.org/abs/2310.14517v2"]]},
-      {authors:"with A. Chapouto, T. Oh",title:"Deep-water and shallow-water limits of statistical equilibria for the intermediate long wave equation",status:"to appear in",venue:"Journal of the European Mathematical Society",year:"2024",links:[["arXiv","https://arxiv.org/abs/2409.06905"]]},
+      {authors:"with A. Chapouto, T. Oh",title:"Deep-water and shallow-water limits of statistical equilibria for the intermediate long wave equation",status:"to appear in",venue:"Journal of the European Mathematical Society",year:"2024",links:[["arXiv","https://arxiv.org/abs/2409.06905"]],related:[{title:"Deep- and shallow-water convergence of the generalized Gibbs measures for the intermediate long wave equation",venue:"Journées Équations aux Dérivées Partielles (2025), Exposé no. 1, 16 p.",year:"2025",url:"https://proceedings.centre-mersenne.org/articles/10.5802/jedp.692/"}]},
       {authors:"with A. Chapouto, J. Forlano, T. Oh, D. Pilod",title:"Intermediate long wave equation in negative Sobolev spaces",venue:"Proceedings of the American Mathematical Society, Series B 11 (2024), 452–468",year:"2024",links:[["Journal","https://doi.org/10.1090/bproc/206"],["arXiv","https://arxiv.org/abs/2311.08142"]]},
       {authors:"with A. Chapouto, T. Oh, D. Pilod",title:"Deep-water limit of the intermediate long wave equation in L²",venue:"Mathematical Research Letters 31 (2024), no. 6, 1655–1692",year:"2024",links:[["Journal","https://link.intlpress.com/JDetail/1888970445406416898"],["arXiv","https://arxiv.org/abs/2311.07997"]]},
       {authors:"with E. Brun, R. Liu",title:"Global well-posedness of the energy-critical stochastic nonlinear wave equations",venue:"Journal of Differential Equations 397 (2024), 316–348",year:"2024",links:[["Journal","https://doi.org/10.1016/j.jde.2024.03.032"],["arXiv","https://arxiv.org/abs/2309.14946"]]},
@@ -40,7 +39,7 @@ function formatVenue(venue) {
 function renderPublications() {
   const query = pubSearch.value.trim().toLowerCase();
   const matched = publications.filter(p =>
-    `${p.title} ${p.authors} ${p.venue} ${p.year}`.toLowerCase().includes(query)
+    `${p.title} ${p.authors} ${p.venue} ${p.year} ${(p.related || []).map(r => `${r.title} ${r.venue} ${r.year}`).join(" ")}`.toLowerCase().includes(query)
   );
 
   pubList.innerHTML = matched.map(p => {
@@ -53,7 +52,10 @@ function renderPublications() {
     ).join("");
     const number = String(publications.indexOf(p) + 1).padStart(2, "0");
     const venueLine = p.status ? `${p.status} <strong class="pub-journal">${p.venue}</strong>` : p.venue === "Preprint" ? `Preprint · ${p.year}` : formatVenue(p.venue);
-    return `<li class="publication-item"><span class="pub-number">${number}</span><div><h3 class="pub-title">${title}</h3>${p.authors ? `<p class="pub-authors">(${p.authors})</p>` : ""}<p class="pub-venue">${venueLine}</p>${links ? `<div class="pub-links">${links}</div>` : ""}</div></li>`;
+    const related = (p.related || []).map(r =>
+      `<li><h4 class="pub-title"><a href="${r.url}" target="_blank" rel="noreferrer">${r.title}</a></h4><p class="pub-venue">${formatVenue(r.venue)}</p></li>`
+    ).join("");
+    return `<li class="publication-item"><span class="pub-number">${number}</span><div><h3 class="pub-title">${title}</h3>${p.authors ? `<p class="pub-authors">(${p.authors})</p>` : ""}<p class="pub-venue">${venueLine}</p>${links ? `<div class="pub-links">${links}</div>` : ""}${related ? `<ul class="pub-related">${related}</ul>` : ""}</div></li>`;
   }).join("");
 
   pubCount.textContent = `Showing ${matched.length} of ${publications.length}`;
