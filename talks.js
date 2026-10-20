@@ -1,5 +1,8 @@
 const talks = {
       "2026": [
+        `Short Visit, Dalian University of Technology, China, October 28–31.`,
+        `Probability Seminar, Peking University, China, October 26.`,
+        `Small Event, Anhui Normal University, China, October 23–25.`,
         `<a href="https://aimsconference.org/AIMS-Conference/conf-reg2026/ss/Schedule.php?ssid=19">AIMS 2026 Conference</a>, Athens, Greece, July 6–10.`,
         `Analysis Seminar, University of Birmingham, UK, June 5.`,
         `<a href="http://tianyuan.amss.ac.cn/ztyt/info/2026/146143.html">Ergodic Theory and Dynamics of SDEs</a>, Tianyuan Mathematics Research Center, Kunming, March 22–28.`,
