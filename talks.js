@@ -1,6 +1,6 @@
 const talks = {
       "2026": [
-        `Visit, University of Science and Technology Beijing, China, November 19.`,
+        `数理领航第80讲, University of Science and Technology Beijing, China, November 19.`,
         `Short Visit, Dalian University of Technology, China, October 28–31.`,
         `Probability Seminar, Peking University, China, October 26.`,
         `Small Event, Anhui Normal University, China, October 23–25.`,
