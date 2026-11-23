@@ -1,3 +1,5 @@
+import {paintTracers, speedThresholds, tracerColors} from "./ilw-tracer-painter.js";
+
 "use strict";
 
 const depth = 1.7;
@@ -32,12 +34,7 @@ function ilwProfile(x) {
 }
 
 function render(canvas, context) {
-  const colors = [
-    "rgba(94,234,212,.5)", "rgba(94,234,212,.34)", "rgba(125,211,252,.22)",
-    "rgba(147,197,253,.28)", "rgba(186,230,253,.4)", "rgba(251,191,36,.5)"
-  ];
-  const thresholds = [.35, .7, 1.05, 1.4, 2.3];
-  const buckets = colors.map(() => []);
+  const buckets = tracerColors.map(() => []);
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const physicsStep = 1.18 / 60;
   const displayStep = 1000 / 60;
@@ -69,6 +66,7 @@ function render(canvas, context) {
     const midpoint = (phase + nextPhase) / 2;
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
+    const scale = width / span;
     for (const particle of particles) {
       const {x, y, z, mode} = particle;
       const first = horizontalVelocity(particle, displacement(x - phase));
@@ -83,32 +81,12 @@ function render(canvas, context) {
       const nextY = z + displacement(nextX - nextPhase) * mode;
       const speed = Math.hypot(speedX, (nextY - y) / physicsStep * height * span / width);
       let color = 0;
-      while (color < thresholds.length && speed / .21 >= thresholds[color]) color++;
-      buckets[color].push(x, y, nextX, nextY);
+      while (color < speedThresholds.length && speed / .21 >= speedThresholds[color]) color++;
+      buckets[color].push(width / 2 + scale * x, height * y, width / 2 + scale * nextX, height * nextY);
       particle.x = nextX;
       particle.y = nextY;
     }
     phase = wrap(nextPhase, period);
-  }
-
-  function paint() {
-    context.globalCompositeOperation = "destination-out";
-    context.fillStyle = "rgba(0,0,0,.07)";
-    context.fillRect(0, 0, width, height);
-    context.globalCompositeOperation = "source-over";
-    context.lineWidth = 1.1;
-    const scale = width / span;
-    for (let color = 0; color < buckets.length; color++) {
-      const segments = buckets[color];
-      if (!segments.length) continue;
-      context.strokeStyle = colors[color];
-      context.beginPath();
-      for (let i = 0; i < segments.length; i += 4) {
-        context.moveTo(width / 2 + scale * segments[i], height * segments[i + 1]);
-        context.lineTo(width / 2 + scale * segments[i + 2], height * segments[i + 3]);
-      }
-      context.stroke();
-    }
   }
 
   function reset() {
@@ -125,7 +103,7 @@ function render(canvas, context) {
     });
     for (let i = 0; i < warmup; i++) {
       advance();
-      paint();
+      paintTracers(context, width, height, buckets);
     }
   }
 
@@ -151,7 +129,7 @@ function render(canvas, context) {
     while (elapsed >= displayStep) {
       elapsed -= displayStep;
       advance();
-      paint();
+      paintTracers(context, width, height, buckets);
     }
     request = requestAnimationFrame(frame);
   }
