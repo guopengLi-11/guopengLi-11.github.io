@@ -1,4 +1,4 @@
-import {paintTracers, speedThresholds, tracerColors} from "./ilw-tracer-painter.js";
+import {paintTracers} from "./ilw-tracer-painter.js?v=20261124-2";
 
 "use strict";
 
@@ -8,6 +8,11 @@ const period = 7.35;
 const theta = inverseWidth * depth;
 const sinTheta = Math.sin(theta);
 const cosTheta = Math.cos(theta);
+const palette = [
+  "rgba(135,157,174,.20)", "rgba(149,173,192,.30)", "rgba(173,193,212,.40)",
+  "rgba(83,203,176,.25)", "rgba(94,234,212,.40)", "rgba(129,242,215,.54)",
+  "rgba(232,166,70,.32)", "rgba(251,191,36,.48)", "rgba(255,207,112,.62)",
+];
 
 function correction() {
   let sum = 0;
@@ -62,7 +67,7 @@ function stageStops(hero, box, vertical) {
 
 function render(canvas, context) {
   const hero = canvas.closest(".home-wave-hero");
-  const buckets = tracerColors.map(() => []);
+  const buckets = palette.map(() => []);
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const physicsStep = .89 / 60;
   const displayStep = 1000 / 60;
@@ -107,10 +112,15 @@ function render(canvas, context) {
     return particle.z + deformationGain(x, formed) * displacement(x - time) * particle.mode;
   }
 
-  function appendSegment(bucket, x, y, nextX, nextY) {
+  function appendSegment(bucket, x, y, nextX, nextY, tail) {
     const from = along * fraction(x), to = along * fraction(nextX);
-    if (vertical) bucket.push(across * y, from, across * nextY, to);
-    else bucket.push(from, across * y, to, across * nextY);
+    const depthFrom = across * y, depthTo = across * nextY;
+    const length = Math.hypot(to - from, depthTo - depthFrom);
+    const stretch = tail / Math.max(.025, length);
+    const tailStart = from - (to - from) * stretch;
+    const tailDepth = depthFrom - (depthTo - depthFrom) * stretch;
+    if (vertical) bucket.push(tailDepth, tailStart, depthTo, to);
+    else bucket.push(tailStart, tailDepth, to, depthTo);
   }
 
   function advance() {
@@ -124,7 +134,7 @@ function render(canvas, context) {
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
     for (const particle of particles) {
-      const {x, y, rank} = particle;
+      const {x, y, rank, tint, shade, inletTrail} = particle;
       const first = horizontalVelocity(particle, x, phase, formed);
       const midX = x + first * dt / 2;
       const speedX = horizontalVelocity(particle, midX, midpoint, formed);
@@ -144,9 +154,13 @@ function render(canvas, context) {
       const revealed = 1 - smoothBetween(front - .055, front + .055, f);
       if (rank > entry * fading * revealed) continue;
       const speed = Math.hypot(speedX, (nextY - y) / dt * across * span / along);
-      let color = 0;
-      while (color < speedThresholds.length && speed / .21 >= speedThresholds[color]) color++;
-      appendSegment(buckets[color], x, y, nextX, nextY);
+      const gain = deformationGain(x, formed);
+      const wave = smoothBetween(.06, .52, gain);
+      const core = smoothBetween(.39, .77, speed) * smoothBetween(.34, .70, gain);
+      const color = tint < core ? 6 : tint < wave ? 3 : 0;
+      // At the slow inlet a subpixel step would look like a dot. Draw a short
+      // tail in the direction of travel while keeping the advection unchanged.
+      appendSegment(buckets[color + shade], x, y, nextX, nextY, inletTrail * (1 - wave));
     }
     phase = wrap(nextPhase, period);
   }
@@ -158,17 +172,19 @@ function render(canvas, context) {
     const count = Math.round(Math.min(1780, Math.max(750, width * height / 265)));
     const formed = smoothBetween(.65, 5.2, sceneAge);
     particles = Array.from({length:count}, (_, i) => {
-      const q = (i * .41421356237 + .23) % 1;
+      const q = (i * .41421356237 + .23 + .035 * (Math.random() - .5)) % 1;
       const z = i % 3 ? .12 + .78 * q : .02 + .96 * q;
-      const x = ((i * .61803398875 + .11) % 1 - .5) * (span + 1.2);
+      const x = ((i * .61803398875 + .11 + .008 * (Math.random() - .5)) % 1 - .5) * (span + 1.2);
+      const brightness = Math.random();
       const particle = {x, z, mode:Math.sin(Math.PI * z), slope:Math.PI * Math.cos(Math.PI * z),
-        rank:(i * .7548776662467 + .13) % 1};
+        rank:(i * .7548776662467 + .13) % 1, tint:Math.random(),
+        shade:brightness < .22 ? 0 : brightness < .9 ? 1 : 2, inletTrail:3.5 + 4.5 * Math.random()};
       particle.y = displayedDepth(particle, x, phase, formed);
       return particle;
     });
     for (let i = 0; i < warmup; i++) {
       advance();
-      paintTracers(context, width, height, buckets);
+      paintTracers(context, width, height, buckets, palette);
     }
   }
 
@@ -206,7 +222,7 @@ function render(canvas, context) {
       elapsed -= displayStep;
       sceneAge = Math.min(9.5, sceneAge + 1 / 60);
       advance();
-      paintTracers(context, width, height, buckets);
+      paintTracers(context, width, height, buckets, palette);
     }
     request = requestAnimationFrame(frame);
   }

@@ -1,22 +1,31 @@
-import {paintTracers, speedThresholds, tracerColors} from "./ilw-tracer-painter.js";
+import {paintTracers, speedThresholds, tracerColors} from "./ilw-tracer-painter.js?v=20261124-2";
 
 const waveSpeed = .86;
-const displacementFactor = .118;
-const sweepSeconds = 24;
+const liveTracerColors = [
+  "rgba(94,234,212,.5)", "rgba(94,234,212,.34)", "rgba(125,211,252,.22)",
+  "rgba(147,197,253,.28)", "rgba(186,230,253,.4)", "rgba(202,239,255,.54)",
+];
+const referenceColors = [
+  "rgba(246,172,104,.055)", "rgba(246,172,104,.12)", "rgba(246,172,104,.21)",
+  "rgba(246,172,104,.34)", "rgba(246,172,104,.46)", "rgba(246,172,104,.62)",
+];
+const comparisonColors = [...referenceColors, ...liveTracerColors];
 const regimes = {
   bo: {
     name: "BO",
     initialDepth: 1.2,
+    liveInitialDepth: .45,
     endpoint: "∞",
-    depth(remaining) { return this.initialDepth / remaining ** 2; },
+    depth(initial, remaining) { return initial / remaining ** 2; },
     limit(x) { return -2 * waveSpeed / (1 + (waveSpeed * x) ** 2); },
     note: "Deep-water comparison at fixed wave speed. Each depth uses its exact ILW solitary-wave profile.",
   },
   kdv: {
     name: "KdV",
     initialDepth: 3,
+    liveInitialDepth: 4.5,
     endpoint: "0",
-    depth(remaining) { return this.initialDepth * remaining ** 2; },
+    depth(initial, remaining) { return initial * remaining ** 2; },
     limit(x) { return -(3 * waveSpeed / 2) / Math.cosh(Math.sqrt(waveSpeed) * x / 2) ** 2; },
     note: "Shallow-water comparison of (3/δ)uδ(3t/δ, x) at fixed rescaled wave speed.",
   },
@@ -57,10 +66,11 @@ function solitaryWave(delta, regime) {
   return x => numerator / (2 * (Math.sinh(a * x / 2) ** 2 + offset));
 }
 
-function comparisonAt(regime, progress) {
+function comparisonAt(regime, progress, liveHero = false) {
   const setting = regimes[regime];
   if (progress >= 1) return {profile: setting.limit, depthLabel: "δ → " + setting.endpoint};
-  const delta = setting.depth(1 - progress);
+  const initialDepth = liveHero ? setting.liveInitialDepth : setting.initialDepth;
+  const delta = setting.depth(initialDepth, 1 - progress);
   const label = delta < .01 || delta >= 1000 ? delta.toExponential(1) : String(+delta.toPrecision(3));
   return {profile: solitaryWave(delta, regime), depthLabel: "δ = " + label};
 }
@@ -92,12 +102,18 @@ function mount(figure) {
   const errorText = preview?.querySelector("#difference");
   const note = preview?.querySelector("#note");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const bins = tracerColors.map(() => []);
+  const liveHero = !preview;
+  const displacementFactor = liveHero ? .135 : .118;
+  const palette = liveHero ? comparisonColors : tracerColors;
+  const bins = palette.map(() => []);
   const displayStep = 1000 / 60;
   const tracerStep = .58 / 60;
+  const sweepSeconds = liveHero ? 20 : 24;
   const sweepStep = 1 / (60 * sweepSeconds);
   let regime = figure.dataset.ilwLimit;
-  let progress = 0, current = comparisonAt(regime, progress), autoSweep = true;
+  const reference = liveHero ? regimes[regime].limit : null;
+  const liveOffset = liveHero ? referenceColors.length : 0;
+  let progress = 0, current = comparisonAt(regime, progress, liveHero), autoSweep = true;
   let width = 0, height = 0, span = 0, particles = [];
   let chartHeight = graph ? chartScale() : 0;
   let raf = 0, lastFrame = 0, elapsed = 0, visible = false;
@@ -131,11 +147,22 @@ function mount(figure) {
       const referenceSpeed = Math.hypot(vx + waveSpeed, (nextY - y) / tracerStep) / .155;
       let color = 0;
       while (color < speedThresholds.length && referenceSpeed >= speedThresholds[color]) color++;
-      bins[color].push(origin + scale * x, y * height, origin + scale * nextX, nextY * height);
+      const startX = origin + scale * x, endX = origin + scale * nextX;
+      if (reference) {
+        // Project the same tracer onto the limiting profile at both horizontal endpoints.
+        const referenceY = z - displacementFactor * reference(x) * mode;
+        const nextReferenceY = z - displacementFactor * reference(nextX) * mode;
+        const gap = height * Math.max(Math.abs(y - referenceY), Math.abs(nextY - nextReferenceY));
+        if (gap > .35) {
+          const warmth = Math.min(referenceColors.length - 1, Math.floor((gap - .35) / 1.4));
+          bins[warmth].push(startX, referenceY * height, endX, nextReferenceY * height);
+        }
+      }
+      bins[liveOffset + color].push(startX, y * height, endX, nextY * height);
       particle.x = nextX;
       particle.y = nextY;
     }
-    paintTracers(context, width, height, bins);
+    paintTracers(context, width, height, bins, palette);
     current = next;
   }
 
@@ -242,7 +269,7 @@ function mount(figure) {
       elapsed -= displayStep;
       const next = autoSweep ? Math.min(1, progress + sweepStep) : progress;
       const changed = next !== progress;
-      drawStep(changed ? comparisonAt(regime, next) : current);
+      drawStep(changed ? comparisonAt(regime, next, liveHero) : current);
       progress = next;
       if (changed && (++graphSteps % 3 === 0 || progress === 1)) refreshLabels();
     }
