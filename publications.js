@@ -52,10 +52,12 @@ function renderPublications() {
     ).join("");
     const number = String(publications.indexOf(p) + 1).padStart(2, "0");
     const venueLine = p.status ? `${p.status} <strong class="pub-journal">${p.venue}</strong>` : p.venue === "Preprint" ? `Preprint · ${p.year}` : formatVenue(p.venue);
+    const authors = p.authors ? `<span class="pub-authors">(${p.authors})</span> ` : "";
+    const metadata = `<p class="pub-meta">${authors}<span class="pub-venue">${venueLine}</span></p>`;
     const related = (p.related || []).map(r =>
       `<li><h4 class="pub-title"><a href="${r.url}" target="_blank" rel="noreferrer">${r.title}</a></h4><p class="pub-venue">${formatVenue(r.venue)}</p></li>`
     ).join("");
-    return `<li class="publication-item"><span class="pub-number">${number}</span><div><h3 class="pub-title">${title}</h3>${p.authors ? `<p class="pub-authors">(${p.authors})</p>` : ""}<p class="pub-venue">${venueLine}</p>${links ? `<div class="pub-links">${links}</div>` : ""}${related ? `<ul class="pub-related">${related}</ul>` : ""}</div></li>`;
+    return `<li class="publication-item"><span class="pub-number">${number}</span><div><h3 class="pub-title">${title}</h3>${metadata}${links ? `<div class="pub-links">${links}</div>` : ""}${related ? `<ul class="pub-related">${related}</ul>` : ""}</div></li>`;
   }).join("");
 
   pubCount.textContent = `Showing ${matched.length} of ${publications.length}`;
