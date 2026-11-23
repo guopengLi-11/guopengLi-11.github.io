@@ -6,19 +6,11 @@ const sweepSeconds = 20;
 const interfaceLevel = .43;
 const projection = .147;
 const fieldSize = 512;
-const seaColors = {
-  bo: {
-    water: ["#173447", "#102536", "#080f1c"],
-    tint: "76,161,211",
-    particles: ["rgba(134,177,208,.13)", "rgba(157,199,222,.23)", "rgba(82,180,220,.30)",
-      "rgba(116,205,234,.44)", "rgba(172,227,247,.56)"],
-  },
-  kdv: {
-    water: ["#163940", "#102b35", "#09121c"],
-    tint: "76,192,173",
-    particles: ["rgba(137,178,193,.13)", "rgba(155,202,207,.23)", "rgba(82,190,178,.30)",
-      "rgba(127,219,197,.44)", "rgba(172,238,214,.56)"],
-  },
+const colors = {
+  water: ["#10151b", "#0a0d12", "#06090d"],
+  tint: "71,176,158",
+  particles: ["rgba(135,157,174,.20)", "rgba(149,173,192,.30)", "rgba(83,203,176,.30)",
+    "rgba(94,234,212,.46)", "rgba(251,191,60,.67)"],
 };
 
 function wrap(value, length) {
@@ -33,7 +25,6 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   const ink = trails.getContext("2d");
   if (!ink) return;
 
-  const colors = seaColors[figure.dataset.ilwLimit];
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
   const field = new Float64Array(fieldSize);
   const bins = colors.particles.map(() => []);

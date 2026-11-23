@@ -1,5 +1,5 @@
 import {paintTracers, speedThresholds, tracerColors} from "./ilw-tracer-painter.js?v=20261124-2";
-import {mountLayeredHero} from "./ilw-layered-hero.js?v=20261124-1";
+import {mountLayeredHero} from "./ilw-layered-hero.js?v=20261124-2";
 
 const waveSpeed = .86;
 const regimes = {
