@@ -1,5 +1,3 @@
-import {paintTracers} from "./ilw-tracer-painter.js?v=20261124-2";
-
 "use strict";
 
 const depth = 1.7;
@@ -8,11 +6,6 @@ const period = 7.35;
 const theta = inverseWidth * depth;
 const sinTheta = Math.sin(theta);
 const cosTheta = Math.cos(theta);
-const palette = [
-  "rgba(135,157,174,.20)", "rgba(149,173,192,.30)", "rgba(173,193,212,.40)",
-  "rgba(83,203,176,.25)", "rgba(94,234,212,.40)", "rgba(129,242,215,.54)",
-  "rgba(232,166,70,.32)", "rgba(251,191,36,.48)", "rgba(255,207,112,.62)",
-];
 
 function correction() {
   let sum = 0;
@@ -38,47 +31,22 @@ function ilwProfile(x) {
   return -inverseWidth * sinTheta * sum;
 }
 
-function smoothBetween(low, high, value) {
-  const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
-  return t * t * (3 - 2 * t);
-}
-
-function textBounds(element, endNode, endOffset) {
-  const range = document.createRange();
-  range.selectNodeContents(element);
-  if (endNode) range.setEnd(endNode, endOffset);
-  return range.getBoundingClientRect();
-}
-
-function stageStops(hero, box, vertical) {
-  const name = textBounds(hero.querySelector("h1"));
-  const role = textBounds(hero.querySelector(".hero-role"));
-  const street = hero.querySelector(".hero-address p");
-  const roadLine = [...street.childNodes].find(node => node.textContent.startsWith("No. 9 Liangxiang East Road"));
-  const marker = roadLine?.textContent.indexOf(" · Li") ?? -1;
-  const address = textBounds(street, marker < 0 ? null : roadLine, marker + " · Li".length);
-  const startOf = rect => vertical ? (rect.top - box.top) / box.height : (rect.left - box.left) / box.width;
-  const endOf = rect => vertical ? (rect.bottom - box.top) / box.height : (rect.right - box.left) / box.width;
-  const formAt = Math.max(.035, Math.min(.22, startOf(name) + .014));
-  const formedBy = Math.min(.56, Math.max(formAt + .17, endOf(role) + .058));
-  const fadeAt = Math.min(.91, Math.max(formedBy + .23, endOf(address)));
-  return {formAt, formedBy, fadeAt};
-}
-
 function render(canvas, context) {
-  const hero = canvas.closest(".home-wave-hero");
-  const buckets = palette.map(() => []);
+  const colors = [
+    "rgba(94,234,212,.5)", "rgba(94,234,212,.34)", "rgba(125,211,252,.22)",
+    "rgba(147,197,253,.28)", "rgba(186,230,253,.4)", "rgba(251,191,36,.5)"
+  ];
+  const thresholds = [.35, .7, 1.05, 1.4, 2.3];
+  const buckets = colors.map(() => []);
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-  const physicsStep = .89 / 60;
+  const physicsStep = 1.18 / 60;
   const displayStep = 1000 / 60;
   const backgroundCurrent = .088;
   const displacementScale = .174;
   const samples = Float64Array.from({length:2048}, (_, i) =>
     -displacementScale * ilwProfile(i * period / 2048));
-  let width = 0, height = 0, along = 0, across = 0, span = 0;
-  let vertical = false, stops;
-  let phase = 0, particles = [];
-  let feedRate = 0, pendingFeed = 0;
+  let width = 0, height = 0, span = 0;
+  let phase = .42, particles = [];
   let lastFrame = 0, elapsed = 0, request = 0, visible = false;
 
   function displacement(x) {
@@ -90,110 +58,10 @@ function render(canvas, context) {
     return first + (location - floor) * (second - first);
   }
 
-  function fraction(x) {
-    return .5 + x / span;
-  }
-
-  function inletWeight(progress) {
-    return 1 - smoothBetween(stops.formAt, stops.formedBy, progress);
-  }
-
-  function deformationGain(x) {
-    const progress = fraction(x);
-    return smoothBetween(stops.formAt, stops.formedBy, progress) *
-      (1 - smoothBetween(stops.fadeAt, 1, progress));
-  }
-
-  // The window only changes the displayed kinematic flow. The ILW wave above
-  // still translates at its exact phase speed.
-  function horizontalVelocity(particle, x, time) {
-    const gain = deformationGain(x);
-    const thickness = 1 + displacement(x - time) * particle.slope;
-    const velocity = waveSpeed - (waveSpeed - backgroundCurrent) / thickness;
-    return backgroundCurrent + gain * (velocity - backgroundCurrent);
-  }
-
-  function displayedDepth(particle, x, time) {
-    return particle.z + deformationGain(x) * displacement(x - time) * particle.mode;
-  }
-
-  function transportVelocity(particle, x, time) {
-    const velocity = horizontalVelocity(particle, x, time);
-    if (!particle.inletSpeed) return velocity;
-    const progress = fraction(x);
-    const entering = inletWeight(progress);
-    const leaving = smoothBetween(stops.fadeAt, 1, progress);
-    const blended = velocity + entering * (particle.inletSpeed - velocity);
-    return blended + leaving * (particle.inletSpeed * .55 - blended);
-  }
-
-  function appendSegment(bucket, x, y, nextX, nextY, tail = 0) {
-    const from = along * fraction(x), to = along * fraction(nextX);
-    const depthFrom = across * y, depthTo = across * nextY;
-    const length = Math.hypot(to - from, depthTo - depthFrom);
-    const stretch = tail / Math.max(.025, length);
-    const tailStart = from - (to - from) * stretch;
-    const tailDepth = depthFrom - (depthTo - depthFrom) * stretch;
-    if (vertical) bucket.push(tailDepth, tailStart, depthTo, to);
-    else bucket.push(tailStart, tailDepth, to, depthTo);
-  }
-
-  function makeInletTracer(x) {
-    const z = .045 + .91 * Math.random();
-    const brightness = Math.random();
-    const particle = {
-      x, z, mode: Math.sin(Math.PI * z), slope: Math.PI * Math.cos(Math.PI * z),
-      rank: Math.random(), tint: Math.random(),
-      shade: brightness < .27 ? 0 : brightness < .90 ? 1 : 2,
-      inletSpeed: (span / along / physicsStep) * (.70 + .55 * Math.random()),
-      carry: z < .47 ? .12 : 0,
-      age: 0,
-    };
-    particle.y = displayedDepth(particle, x, phase);
-    return particle;
-  }
-
-  function advanceParticle(particle, midpoint, nextPhase, limit) {
-    const {x, y, rank, tint, shade, inletTrail, inletSpeed, carry} = particle;
-    const first = transportVelocity(particle, x, phase);
-    const midX = x + first * physicsStep / 2;
-    const speedX = transportVelocity(particle, midX, midpoint);
-    const nextX = x + speedX * physicsStep;
-    if (nextX < -limit || nextX >= limit) {
-      if (inletSpeed) return false;
-      particle.x = nextX < -limit ? limit : -limit;
-      particle.y = displayedDepth(particle, particle.x, nextPhase);
-      return true;
-    }
-    const nextY = displayedDepth(particle, nextX, nextPhase);
-    particle.x = nextX;
-    particle.y = nextY;
-
-    const f = fraction(x);
-    const entering = inletWeight(f);
-    const fading = 1 - smoothBetween(stops.fadeAt, 1, f);
-    const entry = .29 + .71 * smoothBetween(.018, stops.formedBy, f);
-    if (inletSpeed) {
-      // A small, naturally forward-moving upper-layer subset continues into
-      // the wave. Thin the other tracers even if the passing wave slows them.
-      if (rank >= carry) {
-        particle.age += physicsStep;
-        const fresh = 1 - smoothBetween(21, 32, particle.age);
-        if (rank >= entering * fresh) return false;
-      }
-      if (rank > (entering + (1 - entering) * carry) * fading) return true;
-    } else if (rank > entry * fading) {
-      return true;
-    }
-    const speed = Math.hypot(speedX, (nextY - y) / physicsStep * across * span / along);
-    const gain = deformationGain(x);
-    const wave = smoothBetween(.06, .52, gain);
-    const core = smoothBetween(.39, .77, speed) * smoothBetween(.34, .70, gain);
-    const color = tint < core ? 6 : tint < wave ? 3 : 0;
-    if (!inletSpeed && color === 0 && rank > entry * fading * (1 - entering)) return true;
-    const tail = inletSpeed ? 0 : inletTrail * (1 - wave);
-    appendSegment(buckets[color + shade], x, y, nextX, nextY, tail);
-    return true;
+  function horizontalVelocity(particle, heightOffset) {
+    const thickness = 1 + heightOffset * particle.slope;
+    // This incompressible kinematic field deforms fluid-depth labels using U.
+    return waveSpeed - (waveSpeed - backgroundCurrent) / thickness;
   }
 
   function advance() {
@@ -201,67 +69,75 @@ function render(canvas, context) {
     const midpoint = (phase + nextPhase) / 2;
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
-    pendingFeed += feedRate;
-    if (pendingFeed >= 1) {
-      particles.push(makeInletTracer(-span / 2 - .35));
-      pendingFeed -= 1;
-    }
-    let retained = 0;
     for (const particle of particles) {
-      if (advanceParticle(particle, midpoint, nextPhase, limit)) particles[retained++] = particle;
+      const {x, y, z, mode} = particle;
+      const first = horizontalVelocity(particle, displacement(x - phase));
+      const midX = x + first * physicsStep / 2;
+      const speedX = horizontalVelocity(particle, displacement(midX - midpoint));
+      const nextX = x + speedX * physicsStep;
+      if (nextX < -limit || nextX >= limit) {
+        particle.x = nextX < -limit ? limit : -limit;
+        particle.y = z + displacement(particle.x - nextPhase) * mode;
+        continue;
+      }
+      const nextY = z + displacement(nextX - nextPhase) * mode;
+      const speed = Math.hypot(speedX, (nextY - y) / physicsStep * height * span / width);
+      let color = 0;
+      while (color < thresholds.length && speed / .21 >= thresholds[color]) color++;
+      buckets[color].push(x, y, nextX, nextY);
+      particle.x = nextX;
+      particle.y = nextY;
     }
-    particles.length = retained;
     phase = wrap(nextPhase, period);
   }
 
+  function paint() {
+    context.globalCompositeOperation = "destination-out";
+    context.fillStyle = "rgba(0,0,0,.07)";
+    context.fillRect(0, 0, width, height);
+    context.globalCompositeOperation = "source-over";
+    context.lineWidth = 1.1;
+    const scale = width / span;
+    for (let color = 0; color < buckets.length; color++) {
+      const segments = buckets[color];
+      if (!segments.length) continue;
+      context.strokeStyle = colors[color];
+      context.beginPath();
+      for (let i = 0; i < segments.length; i += 4) {
+        context.moveTo(width / 2 + scale * segments[i], height * segments[i + 1]);
+        context.lineTo(width / 2 + scale * segments[i + 2], height * segments[i + 3]);
+      }
+      context.stroke();
+    }
+  }
+
   function reset() {
-    // Seed the entire flow and draw its recent history before playback begins.
-    const warmup = 30;
+    const warmup = 40;
     phase -= waveSpeed * physicsStep * warmup;
     context.clearRect(0, 0, width, height);
-    const count = Math.round(Math.min(1780, Math.max(750, width * height / 265)));
+    const count = Math.round(Math.min(1600, Math.max(680, width * height / 325)));
     particles = Array.from({length:count}, (_, i) => {
-      const q = (i * .41421356237 + .23 + .035 * (Math.random() - .5)) % 1;
+      const q = (i * .41421356237 + .23) % 1;
       const z = i % 3 ? .12 + .78 * q : .02 + .96 * q;
-      const x = ((i * .61803398875 + .11 + .008 * (Math.random() - .5)) % 1 - .5) * (span + 1.2);
-      const brightness = Math.random();
-      const particle = {x, z, mode:Math.sin(Math.PI * z), slope:Math.PI * Math.cos(Math.PI * z),
-        rank:(i * .7548776662467 + .13) % 1, tint:Math.random(),
-        shade:brightness < .22 ? 0 : brightness < .9 ? 1 : 2, inletTrail:3.5 + 4.5 * Math.random()};
-      particle.y = displayedDepth(particle, x, phase);
-      return particle;
+      const x = ((i * .61803398875 + .11) % 1 - .5) * (span + 1.2);
+      const mode = Math.sin(Math.PI * z);
+      return {x,z,mode,slope:Math.PI * Math.cos(Math.PI * z), y:z + displacement(x - phase) * mode};
     });
-    const start = -span / 2 - .35;
-    const inletLength = stops.formedBy * span + .35;
-    const inletCount = Math.max(42, Math.round(count * stops.formedBy * .49));
-    feedRate = Math.min(.70, .40 * count / along);
-    pendingFeed = 0;
-    for (let i = 0; i < inletCount; i++) {
-      particles.push(makeInletTracer(start + inletLength * (i + Math.random()) / inletCount));
-    }
     for (let i = 0; i < warmup; i++) {
       advance();
-      paintTracers(context, width, height, buckets, palette);
+      paint();
     }
   }
 
   function size() {
     const box = canvas.getBoundingClientRect();
     if (!box.width || !box.height) return;
-    const stacked = matchMedia("(max-width: 680px)").matches;
-    stops = stageStops(hero, box, stacked);
     const ratio = Math.min(devicePixelRatio || 1, 2);
     const w = Math.round(box.width * ratio), h = Math.round(box.height * ratio);
-    if (width === box.width && height === box.height && vertical === stacked &&
-        canvas.width === w && canvas.height === h) return;
-    const initial = !width;
+    if (width === box.width && height === box.height && canvas.width === w && canvas.height === h) return;
     width = box.width;
     height = box.height;
-    vertical = stacked;
-    along = vertical ? height : width;
-    across = vertical ? width : height;
-    span = Math.max(6.9, along / across * 3.6);
-    if (initial) phase = (stops.formedBy - .5) * span;
+    span = Math.max(6.9, width / height * 3.6);
     canvas.width = w;
     canvas.height = h;
     context.setTransform(w / width, 0, 0, h / height, 0, 0);
@@ -275,7 +151,7 @@ function render(canvas, context) {
     while (elapsed >= displayStep) {
       elapsed -= displayStep;
       advance();
-      paintTracers(context, width, height, buckets, palette);
+      paint();
     }
     request = requestAnimationFrame(frame);
   }
@@ -294,7 +170,6 @@ function render(canvas, context) {
   reduced.addEventListener("change", sync);
   document.addEventListener("visibilitychange", sync);
   new ResizeObserver(() => { size(); sync(); }).observe(canvas);
-  document.fonts?.ready.then(size);
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }).observe(canvas);
   size();
 }
