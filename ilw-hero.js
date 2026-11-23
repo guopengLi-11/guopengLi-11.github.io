@@ -33,6 +33,7 @@ function ilwProfile(x) {
 
 function render(canvas, context) {
   const colors = [
+    "rgba(132,152,173,.21)", "rgba(152,177,199,.30)", "rgba(175,197,215,.40)",
     "rgba(94,234,212,.5)", "rgba(94,234,212,.34)", "rgba(125,211,252,.22)",
     "rgba(147,197,253,.28)", "rgba(186,230,253,.4)", "rgba(251,191,36,.5)"
   ];
@@ -40,13 +41,19 @@ function render(canvas, context) {
   const buckets = colors.map(() => []);
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const physicsStep = 1.18 / 60;
-  const displayStep = 1000 / 60;
+  const displaySeconds = 1 / 60;
+  const displayStep = 1000 * displaySeconds;
+  const openingSeconds = 1.4;
+  const formationSeconds = 3.6;
+  const animationReadyAt = openingSeconds + formationSeconds;
   const backgroundCurrent = .088;
   const displacementScale = .174;
   const samples = Float64Array.from({length:2048}, (_, i) =>
     -displacementScale * ilwProfile(i * period / 2048));
   let width = 0, height = 0, span = 0;
   let phase = .42, particles = [];
+  let age = reduced.matches ? animationReadyAt : 0;
+  let driftTime = 0;
   let lastFrame = 0, elapsed = 0, request = 0, visible = false;
 
   function displacement(x) {
@@ -58,37 +65,64 @@ function render(canvas, context) {
     return first + (location - floor) * (second - first);
   }
 
-  function horizontalVelocity(particle, heightOffset) {
-    const thickness = 1 + heightOffset * particle.slope;
-    // This incompressible kinematic field deforms fluid-depth labels using U.
-    return waveSpeed - (waveSpeed - backgroundCurrent) / thickness;
+  function formation(time) {
+    const t = Math.max(0, Math.min(1, (time - openingSeconds) / formationSeconds));
+    return t * t * (3 - 2 * t);
   }
 
-  function advance() {
+  function horizontalVelocity(particle, heightOffset, formed) {
+    const thickness = 1 + heightOffset * particle.slope;
+    const current = backgroundCurrent + (1 - formed) * (particle.openingCurrent - backgroundCurrent);
+    // Once formed, recover the original kinematic field of the traveling wave.
+    return waveSpeed - (waveSpeed - current) / thickness;
+  }
+
+  function visibleDepth(particle, depth, time) {
+    return depth + particle.drift * Math.sin(particle.driftRate * time + particle.driftPhase);
+  }
+
+  function advance(nextAge = age) {
     const nextPhase = phase + waveSpeed * physicsStep;
     const midpoint = (phase + nextPhase) / 2;
+    const nextDrift = driftTime + physicsStep;
+    const formed = formation(age);
+    const halfFormed = formation((age + nextAge) / 2);
+    const nextFormed = formation(nextAge);
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
     for (const particle of particles) {
-      const {x, y, z, mode} = particle;
-      const first = horizontalVelocity(particle, displacement(x - phase));
+      const {x, y, z, mode, shownY} = particle;
+      const first = horizontalVelocity(particle, formed * displacement(x - phase), formed);
       const midX = x + first * physicsStep / 2;
-      const speedX = horizontalVelocity(particle, displacement(midX - midpoint));
+      const midOffset = halfFormed * displacement(midX - midpoint);
+      const speedX = horizontalVelocity(particle, midOffset, halfFormed);
       const nextX = x + speedX * physicsStep;
       if (nextX < -limit || nextX >= limit) {
         particle.x = nextX < -limit ? limit : -limit;
-        particle.y = z + displacement(particle.x - nextPhase) * mode;
+        particle.y = z + nextFormed * displacement(particle.x - nextPhase) * mode;
+        particle.shownY = visibleDepth(particle, particle.y, nextDrift);
         continue;
       }
-      const nextY = z + displacement(nextX - nextPhase) * mode;
-      const speed = Math.hypot(speedX, (nextY - y) / physicsStep * height * span / width);
-      let color = 0;
-      while (color < thresholds.length && speed / .21 >= thresholds[color]) color++;
-      buckets[color].push(x, y, nextX, nextY);
+      const nextY = z + nextFormed * displacement(nextX - nextPhase) * mode;
+      const nextShownY = visibleDepth(particle, nextY, nextDrift);
+      let tone = particle.shade;
+      if (particle.colorRank < nextFormed) {
+        // As the colors form, measure the wave current without the faster
+        // opening drift, so the entrance does not look like a gold crest.
+        const waveVelocity = halfFormed === 1 ? speedX : horizontalVelocity(particle, midOffset, 1);
+        const speed = Math.hypot(waveVelocity, (nextY - y) / physicsStep * height * span / width);
+        let color = 0;
+        while (color < thresholds.length && speed / .21 >= thresholds[color]) color++;
+        tone = 3 + color;
+      }
+      buckets[tone].push(x, shownY, nextX, nextShownY);
       particle.x = nextX;
       particle.y = nextY;
+      particle.shownY = nextShownY;
     }
     phase = wrap(nextPhase, period);
+    driftTime = nextDrift;
+    age = nextAge;
   }
 
   function paint() {
@@ -114,14 +148,28 @@ function render(canvas, context) {
   function reset() {
     const warmup = 40;
     phase -= waveSpeed * physicsStep * warmup;
+    driftTime -= physicsStep * warmup;
     context.clearRect(0, 0, width, height);
-    const count = Math.round(Math.min(1600, Math.max(680, width * height / 325)));
+    const count = Math.round(1.5 * Math.min(1600, Math.max(680, width * height / 325)));
+    const formed = formation(age);
     particles = Array.from({length:count}, (_, i) => {
-      const q = (i * .41421356237 + .23) % 1;
+      const q = (i * .41421356237 + .23 + .042 * (Math.random() - .5)) % 1;
       const z = i % 3 ? .12 + .78 * q : .02 + .96 * q;
-      const x = ((i * .61803398875 + .11) % 1 - .5) * (span + 1.2);
+      const x = ((i * .61803398875 + .11 + .014 * (Math.random() - .5)) % 1 - .5) * (span + 1.2);
       const mode = Math.sin(Math.PI * z);
-      return {x,z,mode,slope:Math.PI * Math.cos(Math.PI * z), y:z + displacement(x - phase) * mode};
+      const y = z + formed * displacement(x - phase) * mode;
+      const shade = Math.random();
+      const particle = {
+        x, y, z, mode, slope: Math.PI * Math.cos(Math.PI * z),
+        shade: shade < .23 ? 0 : shade < .88 ? 1 : 2,
+        colorRank: Math.random(),
+        openingCurrent: (.73 + .46 * Math.random()) * span / (width * physicsStep),
+        drift: (.0035 + .005 * Math.random()) * mode,
+        driftRate: 2.2 + 3.6 * Math.random(),
+        driftPhase: 2 * Math.PI * Math.random(),
+      };
+      particle.shownY = visibleDepth(particle, y, driftTime);
+      return particle;
     });
     for (let i = 0; i < warmup; i++) {
       advance();
@@ -150,7 +198,7 @@ function render(canvas, context) {
     lastFrame = timestamp;
     while (elapsed >= displayStep) {
       elapsed -= displayStep;
-      advance();
+      advance(Math.min(animationReadyAt, age + displaySeconds));
       paint();
     }
     request = requestAnimationFrame(frame);

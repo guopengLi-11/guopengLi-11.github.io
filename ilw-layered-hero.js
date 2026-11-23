@@ -6,6 +6,8 @@ const sweepSeconds = 20;
 const interfaceLevel = .43;
 const projection = .147;
 const fieldSize = 512;
+const waveCopies = 3;
+const turn = 2 * Math.PI;
 const colors = {
   water: ["#10151b", "#0a0d12", "#06090d"],
   tint: "71,176,158",
@@ -29,9 +31,9 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   const field = new Float64Array(fieldSize);
   const bins = colors.particles.map(() => []);
   const shearColor = colors.particles.length - 1;
-  let width = 0, height = 0, scale = 1, spacing = 0, phase = 0;
+  let width = 0, height = 0, scale = 1, spacing = 0, trainLength = 0, phase = 0;
   let age = 0, profile = profileAt(0), background, lowerWater, interfaceLight;
-  let particles = [], interfacePoints = new Float64Array(0);
+  let particles = [], eddies = [], interfacePoints = new Float64Array(0);
   let frameId = 0, lastTime, lag = 0, visible = false;
 
   function sampleProfile() {
@@ -44,7 +46,8 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const value = profile(x);
       const blend = Math.max(0, (x - (half - joinWidth)) / joinWidth);
       const smooth = blend * blend * (3 - 2 * blend);
-      field[i] = -projection * (value + smooth * (profile(spacing - x) - value) / 2);
+      const correction = smooth ? smooth * (profile(spacing - x) - value) / 2 : 0;
+      field[i] = -projection * (value + correction);
     }
   }
 
@@ -53,6 +56,33 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     const left = Math.min(fieldSize - 1, Math.floor(index));
     const first = field[left], second = field[(left + 1) % fieldSize];
     return first + (second - first) * (index - left);
+  }
+
+  function eddyDepth(x, z, wavePhase) {
+    return z + displacement(x, wavePhase) * Math.sin(Math.PI * z);
+  }
+
+  function traceEddies(nextPhase) {
+    const right = width / scale;
+    for (const eddy of eddies) {
+      // Wrap only the part of the wave train outside the canvas.
+      const margin = eddy.radius + .55;
+      const center = wrap(phase + eddy.offset + margin, trainLength) - margin;
+      const nextCenter = center + nextPhase - phase;
+      const onScreen = center <= right + margin;
+      for (const p of eddy.particles) {
+        const nextAngle = wrap(p.angle + p.spin * waveTimeStep, turn);
+        const nextX = nextCenter + p.rx * Math.cos(nextAngle);
+        const z = eddy.depth + p.ry * Math.sin(nextAngle);
+        const nextY = eddyDepth(nextX, z, nextPhase);
+        if (onScreen) {
+          const x = center + p.rx * Math.cos(p.angle);
+          bins[p.shade].push(x * scale, p.y * height, nextX * scale, nextY * height);
+        }
+        p.angle = nextAngle;
+        p.y = nextY;
+      }
+    }
   }
 
   function trace(nextPhase) {
@@ -77,6 +107,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       p.x = nextX;
       p.y = nextY;
     }
+    traceEddies(nextPhase);
     paintTracers(ink, width, height, bins, colors.particles);
   }
 
@@ -116,11 +147,11 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   }
 
   function seed() {
-    const count = Math.round(Math.min(1340, Math.max(440, width * height / 245)));
+    const count = Math.round(Math.min(2940, Math.max(1010, width * height / 126)));
     const span = width / scale + 1;
     particles = Array.from({length: count}, (_, i) => {
       const near = Math.random() < .76;
-      const x = - .5 + span * (i + Math.random()) / count;
+      const x = -.5 + span * (i + Math.random()) / count;
       const z = near
         ? interfaceLevel + (Math.random() + Math.random() + Math.random() - 1.5) * .09
         : .025 + .95 * Math.random();
@@ -132,15 +163,46 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     });
   }
 
+  function seedEddy(offset, depth, radius, depthRadius, direction, count) {
+    // Orbit tracers visualize local circulation in the frame of each wave.
+    const particles = Array.from({length: count}, () => {
+      const radial = .16 + .84 * Math.sqrt(Math.random());
+      const angle = turn * Math.random();
+      const rx = radius * radial * (.83 + .17 * Math.random());
+      const ry = depthRadius * radial * (.85 + .15 * Math.random());
+      const spin = direction * (1.42 + 1.60 * (1 - radial)) * (.86 + .28 * Math.random());
+      const tone = Math.random();
+      const shade = radial < .70 && tone > .62 ? shearColor : tone > .22 ? 3 : 2;
+      const x = phase + offset + rx * Math.cos(angle);
+      const z = depth + ry * Math.sin(angle);
+      return {angle, rx, ry, spin, shade, y: eddyDepth(x, z, phase)};
+    });
+    return {offset, depth, radius, particles};
+  }
+
+  function seedEddies() {
+    const count = width > 680 ? 172 : 115;
+    eddies = [];
+    for (let i = 0; i < waveCopies; i++) {
+      const crest = i * spacing;
+      const direction = i === 1 ? -1 : 1;
+      eddies.push(
+        seedEddy(crest - 1.12, .565 + .025 * Math.random(), 1.12 + .22 * Math.random(), .083, direction, count),
+        seedEddy(crest + 1.45, .327 + .025 * Math.random(), .74 + .16 * Math.random(), .050, -direction, Math.round(count * .60))
+      );
+    }
+  }
+
   function size() {
     const box = sizeCanvas(canvas, context);
     if (!box || (width === box.width && height === box.height && !box.resized)) return;
-    const crestFraction = width ? phase * scale / width : .57;
+    const phaseInWaves = width ? phase / spacing : .58;
     width = box.width;
     height = box.height;
-    scale = Math.min(width / 8.8, height / 4.6);
-    spacing = Math.max(10.8, .92 * width / scale);
-    phase = wrap(crestFraction * width / scale, spacing);
+    scale = Math.min(width / 23.5, height / 4.6);
+    spacing = .46 * width / scale;
+    trainLength = waveCopies * spacing;
+    phase = wrap(phaseInWaves * spacing, trainLength);
     interfacePoints = new Float64Array(Math.max(94, Math.ceil(width / 7)) + 1);
     trails.width = canvas.width;
     trails.height = canvas.height;
@@ -158,12 +220,13 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     interfaceLight.addColorStop(.64, "rgba(" + tint + ",.074)");
     interfaceLight.addColorStop(1, "rgba(" + tint + ",.051)");
     sampleProfile();
-    phase = wrap(phase - waveSpeed * waveTimeStep * 22, spacing);
+    phase = wrap(phase - waveSpeed * waveTimeStep * 22, trainLength);
     seed();
+    seedEddies();
     for (let i = 0; i < 22; i++) {
       const nextPhase = phase + waveSpeed * waveTimeStep;
       trace(nextPhase);
-      phase = wrap(nextPhase, spacing);
+      phase = wrap(nextPhase, trainLength);
     }
     draw();
   }
@@ -181,7 +244,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       }
       const nextPhase = phase + waveSpeed * waveTimeStep;
       trace(nextPhase);
-      phase = wrap(nextPhase, spacing);
+      phase = wrap(nextPhase, trainLength);
       advanced = true;
     }
     if (advanced) draw();
