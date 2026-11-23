@@ -380,17 +380,25 @@ main { flex: 1; }
   margin-top: 14px;
 }
 .hero-resource-links a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .3em;
   color: #fff;
   font-size: .875rem;
   font-weight: 600;
   line-height: 1.8;
-  text-decoration: underline;
-  text-decoration-color: rgba(255,255,255,.58);
-  text-underline-offset: .22em;
+}
+.hero-resource-links a span {
+  color: rgba(255,255,255,.68);
+  font-size: .8em;
 }
 .hero-resource-links a:hover,
 .hero-resource-links a:focus-visible {
-  text-decoration-color: currentColor;
+  color: #d1edf7;
+}
+.hero-resource-links a:hover span,
+.hero-resource-links a:focus-visible span {
+  color: inherit;
 }
 .hero-resource-links a:focus-visible {
   outline: 2px solid currentColor;
