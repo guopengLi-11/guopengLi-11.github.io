@@ -14,21 +14,23 @@ const colors = {
   particles: ["rgba(135,157,174,.20)", "rgba(149,173,192,.30)", "rgba(83,203,176,.30)",
     "rgba(94,234,212,.46)", "rgba(251,191,60,.67)"],
 };
-// Use the same vertical scale and hues. The thinner BO band and tighter
-// eddies emphasize its sharper well, while KdV has a broader soft band.
+// The coordinate stretch and eddy shapes distinguish the wells while
+// retaining the same water and tracer colors.
 const appearance = {
   bo: {
+    depthStretch: 1.5,
     bands: [.102, .064, .034, .015, .006],
     eddies: [
-      {offset: -.87, depth: .548, radius: .96, depthRadius: .093, spin: 1.12},
-      {offset: 1.10, depth: .323, radius: .69, depthRadius: .053, spin: 1.04},
+      {offset: -.87, depth: .548, radius: .91, depthRadius: .093, spin: 1.12},
+      {offset: 1.10, depth: .323, radius: .65, depthRadius: .053, spin: 1.04},
     ],
   },
   kdv: {
+    depthStretch: -.90,
     bands: [.108, .077, .051, .032, .017],
     eddies: [
-      {offset: -1.62, depth: .562, radius: 1.55, depthRadius: .061, spin: .77},
-      {offset: 1.84, depth: .337, radius: 1.07, depthRadius: .038, spin: .82},
+      {offset: -1.62, depth: .562, radius: 1.65, depthRadius: .061, spin: .77},
+      {offset: 1.84, depth: .337, radius: 1.15, depthRadius: .038, spin: .82},
     ],
   },
 };
@@ -81,6 +83,11 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     return z + displacement(x, wavePhase) * Math.sin(Math.PI * z);
   }
 
+  function screenDepth(y) {
+    // Stretch only the display, anchoring the water edges and undisturbed interface.
+    return height * (y + style.depthStretch * y * y * (1 - y) * (y - interfaceLevel));
+  }
+
   function displayedDepth(p, x, y, wavePhase, time) {
     // Neighbors share a soft wavering motion, with a smaller individual drift.
     const relativeAngle = turn * (x - wavePhase) / spacing;
@@ -111,7 +118,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
         const nextY = eddyDepth(nextX, z, nextPhase);
         if (onScreen) {
           const x = center + p.offsetX;
-          bins[p.shade].push(x * scale, p.y * height, nextX * scale, nextY * height);
+          bins[p.shade].push(x * scale, screenDepth(p.y), nextX * scale, screenDepth(nextY));
         }
         p.angle = nextAngle;
         p.offsetX = nextOffsetX;
@@ -141,7 +148,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const nextShownY = displayedDepth(p, nextX, nextY, nextPhase, nextTime);
       const ySpeed = Math.abs(nextY - p.y) * height;
       const color = p.near && p.shade >= 3 && ySpeed > .15 ? shearColor : p.shade;
-      bins[color].push(p.x * scale, p.shownY * height, nextX * scale, nextShownY * height);
+      bins[color].push(p.x * scale, screenDepth(p.shownY), nextX * scale, screenDepth(nextShownY));
       p.x = nextX;
       p.y = nextY;
       p.shownY = nextShownY;
@@ -171,7 +178,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     const dx = width / (interfacePoints.length - 1);
     const mode = Math.sin(Math.PI * interfaceLevel);
     for (let i = 0; i < interfacePoints.length; i++) {
-      interfacePoints[i] = height * (interfaceLevel + mode * displacement(i * dx / scale, phase));
+      interfacePoints[i] = screenDepth(interfaceLevel + mode * displacement(i * dx / scale, phase));
     }
     context.fillStyle = background;
     context.fillRect(0, 0, width, height);
@@ -187,7 +194,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   }
 
   function seed() {
-    const count = Math.round(Math.min(3800, Math.max(1500, width * height / 101)));
+    const count = Math.round(Math.min(4600, Math.max(1825, width * height / 83)));
     const span = width / scale + 1;
     const clusterPhase = turn * Math.random();
     const detailPhase = turn * Math.random();
@@ -198,7 +205,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const cluster = Math.sin(2 * turn * position + clusterPhase);
       const detail = Math.sin(5 * turn * position + detailPhase);
       const shifted = position + .026 * (cluster - clusterStart) + .007 * (detail - detailStart);
-      const near = Math.random() < .64 + .11 * cluster;
+      const near = Math.random() < .55 + .11 * cluster;
       const x = -.5 + span * shifted;
       const z = near
         ? interfaceLevel + (Math.random() + Math.random() + Math.random() - 1.5) * .09
