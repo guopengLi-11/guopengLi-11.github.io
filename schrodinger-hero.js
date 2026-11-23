@@ -50,7 +50,7 @@ function render(canvas, context) {
   const opacityLevels = [.36, .68, 1];
   const buckets = opacityLevels.map(() => colors.map(() => []));
   const packetInterval = .78;
-  const physicsStep = .0068;
+  const physicsStep = .0045;
   const displayStep = 1000 / 60;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const velocity = {};
