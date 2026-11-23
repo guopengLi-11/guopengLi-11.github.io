@@ -360,12 +360,14 @@ main { flex: 1; }
   pointer-events: none;
 }
 .publications-hero::after {
-  background: linear-gradient(90deg, rgba(10,13,18,.84) 0%,
-    rgba(10,13,18,.58) 31%, transparent 67%);
+  background: radial-gradient(ellipse 48% 58% at 17% 50%, rgba(10,13,18,.69), transparent);
+}
+.publications-hero .page-hero-inner {
+  text-shadow: 0 1px 3px #0a0d12;
 }
 @media (max-width: 680px) {
   .publications-hero::after {
-    background: linear-gradient(90deg, rgba(10,13,18,.73), rgba(10,13,18,.30));
+    background: radial-gradient(ellipse 85% 62% at 20% 50%, rgba(10,13,18,.73), transparent);
   }
 }
 .math-motif { position: absolute; z-index: 0; top: 50%; right: 1.5%; width: min(34vw,420px); height: auto; transform: translateY(-50%); fill: none; stroke: rgba(255,255,255,.16); stroke-width: 1.15; vector-effect: non-scaling-stroke; pointer-events: none; }
