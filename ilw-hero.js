@@ -77,7 +77,7 @@ function render(canvas, context) {
     -displacementScale * ilwProfile(i * period / 2048));
   let width = 0, height = 0, along = 0, across = 0, span = 0;
   let vertical = false, stops;
-  let phase = .42, particles = [], sceneAge = 0;
+  let phase = 0, particles = [];
   let lastFrame = 0, elapsed = 0, request = 0, visible = false;
 
   function displacement(x) {
@@ -93,23 +93,23 @@ function render(canvas, context) {
     return .5 + x / span;
   }
 
-  function deformationGain(x, formed) {
+  function deformationGain(x) {
     const progress = fraction(x);
-    return formed * smoothBetween(stops.formAt, stops.formedBy, progress) *
+    return smoothBetween(stops.formAt, stops.formedBy, progress) *
       (1 - smoothBetween(stops.fadeAt, 1, progress));
   }
 
   // The window only changes the displayed kinematic flow. The ILW wave above
   // still translates at its exact phase speed.
-  function horizontalVelocity(particle, x, time, formed) {
-    const gain = deformationGain(x, formed);
+  function horizontalVelocity(particle, x, time) {
+    const gain = deformationGain(x);
     const thickness = 1 + displacement(x - time) * particle.slope;
     const velocity = waveSpeed - (waveSpeed - backgroundCurrent) / thickness;
     return backgroundCurrent + gain * (velocity - backgroundCurrent);
   }
 
-  function displayedDepth(particle, x, time, formed) {
-    return particle.z + deformationGain(x, formed) * displacement(x - time) * particle.mode;
+  function displayedDepth(particle, x, time) {
+    return particle.z + deformationGain(x) * displacement(x - time) * particle.mode;
   }
 
   function appendSegment(bucket, x, y, nextX, nextY, tail) {
@@ -124,37 +124,32 @@ function render(canvas, context) {
   }
 
   function advance() {
-    const dt = physicsStep * (.66 + .34 * smoothBetween(0, 4.5, sceneAge));
+    const dt = physicsStep;
     const nextPhase = phase + waveSpeed * dt;
     const midpoint = (phase + nextPhase) / 2;
-    const formed = smoothBetween(.65, 5.2, sceneAge);
-    // The soft front moves across the canvas once. Afterwards the flow
-    // continues indefinitely and only individual offscreen tracers recycle.
-    const front = .095 + 1.04 * smoothBetween(0, 9.5, sceneAge);
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
     for (const particle of particles) {
       const {x, y, rank, tint, shade, inletTrail} = particle;
-      const first = horizontalVelocity(particle, x, phase, formed);
+      const first = horizontalVelocity(particle, x, phase);
       const midX = x + first * dt / 2;
-      const speedX = horizontalVelocity(particle, midX, midpoint, formed);
+      const speedX = horizontalVelocity(particle, midX, midpoint);
       const nextX = x + speedX * dt;
       if (nextX < -limit || nextX >= limit) {
         particle.x = nextX < -limit ? limit : -limit;
-        particle.y = displayedDepth(particle, particle.x, nextPhase, formed);
+        particle.y = displayedDepth(particle, particle.x, nextPhase);
         continue;
       }
-      const nextY = displayedDepth(particle, nextX, nextPhase, formed);
+      const nextY = displayedDepth(particle, nextX, nextPhase);
       particle.x = nextX;
       particle.y = nextY;
 
       const f = fraction(x);
       const entry = .29 + .71 * smoothBetween(.018, stops.formedBy, f);
       const fading = 1 - smoothBetween(stops.fadeAt, 1, f);
-      const revealed = 1 - smoothBetween(front - .055, front + .055, f);
-      if (rank > entry * fading * revealed) continue;
+      if (rank > entry * fading) continue;
       const speed = Math.hypot(speedX, (nextY - y) / dt * across * span / along);
-      const gain = deformationGain(x, formed);
+      const gain = deformationGain(x);
       const wave = smoothBetween(.06, .52, gain);
       const core = smoothBetween(.39, .77, speed) * smoothBetween(.34, .70, gain);
       const color = tint < core ? 6 : tint < wave ? 3 : 0;
@@ -166,11 +161,11 @@ function render(canvas, context) {
   }
 
   function reset() {
+    // Seed the entire flow and draw its recent history before playback begins.
     const warmup = 30;
     phase -= waveSpeed * physicsStep * warmup;
     context.clearRect(0, 0, width, height);
     const count = Math.round(Math.min(1780, Math.max(750, width * height / 265)));
-    const formed = smoothBetween(.65, 5.2, sceneAge);
     particles = Array.from({length:count}, (_, i) => {
       const q = (i * .41421356237 + .23 + .035 * (Math.random() - .5)) % 1;
       const z = i % 3 ? .12 + .78 * q : .02 + .96 * q;
@@ -179,7 +174,7 @@ function render(canvas, context) {
       const particle = {x, z, mode:Math.sin(Math.PI * z), slope:Math.PI * Math.cos(Math.PI * z),
         rank:(i * .7548776662467 + .13) % 1, tint:Math.random(),
         shade:brightness < .22 ? 0 : brightness < .9 ? 1 : 2, inletTrail:3.5 + 4.5 * Math.random()};
-      particle.y = displayedDepth(particle, x, phase, formed);
+      particle.y = displayedDepth(particle, x, phase);
       return particle;
     });
     for (let i = 0; i < warmup; i++) {
@@ -204,10 +199,7 @@ function render(canvas, context) {
     along = vertical ? height : width;
     across = vertical ? width : height;
     span = Math.max(6.9, along / across * 3.6);
-    if (initial) {
-      phase = (stops.formedBy - .5) * span;
-      if (reduced.matches) sceneAge = 9.5;
-    }
+    if (initial) phase = (stops.formedBy - .5) * span;
     canvas.width = w;
     canvas.height = h;
     context.setTransform(w / width, 0, 0, h / height, 0, 0);
@@ -220,7 +212,6 @@ function render(canvas, context) {
     lastFrame = timestamp;
     while (elapsed >= displayStep) {
       elapsed -= displayStep;
-      sceneAge = Math.min(9.5, sceneAge + 1 / 60);
       advance();
       paintTracers(context, width, height, buckets, palette);
     }

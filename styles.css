@@ -150,6 +150,7 @@
     .hero-email span { color: inherit; }
     .hero-address { margin: 0; padding-left: 38px; border-left: 1px solid rgba(255,255,255,.4); color: var(--hero-ink); text-shadow: var(--hero-letter-shadow); font-style: normal; }
     .hero-address h2 { margin: 0 0 12px; color: inherit; font-family: "Libre Caslon Display", Georgia, serif; font-size: 1.6rem; font-weight: 400; }
+    .home-wave-hero h1, .home-wave-hero .hero-address h2 { font-family: inherit; }
     .hero-address p { margin: 0; }
     .hero-address-institution { color: var(--hero-ink); font-weight: 500; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 33px; }
