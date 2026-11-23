@@ -77,7 +77,8 @@ function render(canvas, context) {
     -displacementScale * ilwProfile(i * period / 2048));
   let width = 0, height = 0, along = 0, across = 0, span = 0;
   let vertical = false, stops;
-  let phase = 0, particles = [], inletParticles = [];
+  let phase = 0, particles = [];
+  let feedRate = 0, pendingFeed = 0;
   let lastFrame = 0, elapsed = 0, request = 0, visible = false;
 
   function displacement(x) {
@@ -95,10 +96,6 @@ function render(canvas, context) {
 
   function inletWeight(progress) {
     return 1 - smoothBetween(stops.formAt, stops.formedBy, progress);
-  }
-
-  function inletStart() {
-    return -span / 2 - .35;
   }
 
   function deformationGain(x) {
@@ -120,70 +117,100 @@ function render(canvas, context) {
     return particle.z + deformationGain(x) * displacement(x - time) * particle.mode;
   }
 
+  function transportVelocity(particle, x, time) {
+    const velocity = horizontalVelocity(particle, x, time);
+    if (!particle.inletSpeed) return velocity;
+    const progress = fraction(x);
+    const entering = inletWeight(progress);
+    const leaving = smoothBetween(stops.fadeAt, 1, progress);
+    const blended = velocity + entering * (particle.inletSpeed - velocity);
+    return blended + leaving * (particle.inletSpeed * .55 - blended);
+  }
+
   function appendSegment(bucket, x, y, nextX, nextY, tail = 0) {
     const from = along * fraction(x), to = along * fraction(nextX);
     const depthFrom = across * y, depthTo = across * nextY;
-    const stretch = tail ? tail / Math.max(.025, Math.hypot(to - from, depthTo - depthFrom)) : 0;
+    const length = Math.hypot(to - from, depthTo - depthFrom);
+    const stretch = tail / Math.max(.025, length);
     const tailStart = from - (to - from) * stretch;
     const tailDepth = depthFrom - (depthTo - depthFrom) * stretch;
     if (vertical) bucket.push(tailDepth, tailStart, depthTo, to);
     else bucket.push(tailStart, tailDepth, to, depthTo);
   }
 
-  // Let each tracer re-enter from offscreen after its tail fades into the wave.
-  function advanceInlet(nextPhase) {
-    const start = inletStart();
-    const end = (stops.formedBy - .5) * span;
-    for (const particle of inletParticles) {
-      const {x, y, step, shade, rank} = particle;
-      const weight = inletWeight(fraction(x));
-      const nextX = x + step * (.60 + .40 * weight);
-      if (nextX >= end) {
-        particle.x = start + wrap(nextX - end, end - start);
-        particle.y = displayedDepth(particle, particle.x, nextPhase);
-        continue;
-      }
-      const nextY = displayedDepth(particle, nextX, nextPhase);
-      if (rank < weight) appendSegment(buckets[shade], x, y, nextX, nextY);
-      particle.x = nextX;
-      particle.y = nextY;
+  function makeInletTracer(x) {
+    const z = .045 + .91 * Math.random();
+    const brightness = Math.random();
+    const particle = {
+      x, z, mode: Math.sin(Math.PI * z), slope: Math.PI * Math.cos(Math.PI * z),
+      rank: Math.random(), tint: Math.random(),
+      shade: brightness < .27 ? 0 : brightness < .90 ? 1 : 2,
+      inletSpeed: (span / along / physicsStep) * (.70 + .55 * Math.random()),
+      carry: z < .47 ? .12 : 0,
+      age: 0,
+    };
+    particle.y = displayedDepth(particle, x, phase);
+    return particle;
+  }
+
+  function advanceParticle(particle, midpoint, nextPhase, limit) {
+    const {x, y, rank, tint, shade, inletTrail, inletSpeed, carry} = particle;
+    const first = transportVelocity(particle, x, phase);
+    const midX = x + first * physicsStep / 2;
+    const speedX = transportVelocity(particle, midX, midpoint);
+    const nextX = x + speedX * physicsStep;
+    if (nextX < -limit || nextX >= limit) {
+      if (inletSpeed) return false;
+      particle.x = nextX < -limit ? limit : -limit;
+      particle.y = displayedDepth(particle, particle.x, nextPhase);
+      return true;
     }
+    const nextY = displayedDepth(particle, nextX, nextPhase);
+    particle.x = nextX;
+    particle.y = nextY;
+
+    const f = fraction(x);
+    const entering = inletWeight(f);
+    const fading = 1 - smoothBetween(stops.fadeAt, 1, f);
+    const entry = .29 + .71 * smoothBetween(.018, stops.formedBy, f);
+    if (inletSpeed) {
+      // A small, naturally forward-moving upper-layer subset continues into
+      // the wave. Thin the other tracers even if the passing wave slows them.
+      if (rank >= carry) {
+        particle.age += physicsStep;
+        const fresh = 1 - smoothBetween(21, 32, particle.age);
+        if (rank >= entering * fresh) return false;
+      }
+      if (rank > (entering + (1 - entering) * carry) * fading) return true;
+    } else if (rank > entry * fading) {
+      return true;
+    }
+    const speed = Math.hypot(speedX, (nextY - y) / physicsStep * across * span / along);
+    const gain = deformationGain(x);
+    const wave = smoothBetween(.06, .52, gain);
+    const core = smoothBetween(.39, .77, speed) * smoothBetween(.34, .70, gain);
+    const color = tint < core ? 6 : tint < wave ? 3 : 0;
+    if (!inletSpeed && color === 0 && rank > entry * fading * (1 - entering)) return true;
+    const tail = inletSpeed ? 0 : inletTrail * (1 - wave);
+    appendSegment(buckets[color + shade], x, y, nextX, nextY, tail);
+    return true;
   }
 
   function advance() {
-    const dt = physicsStep;
-    const nextPhase = phase + waveSpeed * dt;
+    const nextPhase = phase + waveSpeed * physicsStep;
     const midpoint = (phase + nextPhase) / 2;
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
-    for (const particle of particles) {
-      const {x, y, rank, tint, shade, inletTrail} = particle;
-      const first = horizontalVelocity(particle, x, phase);
-      const midX = x + first * dt / 2;
-      const speedX = horizontalVelocity(particle, midX, midpoint);
-      const nextX = x + speedX * dt;
-      if (nextX < -limit || nextX >= limit) {
-        particle.x = nextX < -limit ? limit : -limit;
-        particle.y = displayedDepth(particle, particle.x, nextPhase);
-        continue;
-      }
-      const nextY = displayedDepth(particle, nextX, nextPhase);
-      particle.x = nextX;
-      particle.y = nextY;
-
-      const f = fraction(x);
-      const entry = .29 + .71 * smoothBetween(.018, stops.formedBy, f);
-      const fading = 1 - smoothBetween(stops.fadeAt, 1, f);
-      if (rank > entry * fading) continue;
-      const speed = Math.hypot(speedX, (nextY - y) / dt * across * span / along);
-      const gain = deformationGain(x);
-      const wave = smoothBetween(.06, .52, gain);
-      const core = smoothBetween(.39, .77, speed) * smoothBetween(.34, .70, gain);
-      const color = tint < core ? 6 : tint < wave ? 3 : 0;
-      if (color === 0 && rank > entry * fading * (1 - inletWeight(f))) continue;
-      appendSegment(buckets[color + shade], x, y, nextX, nextY, inletTrail * (1 - wave));
+    pendingFeed += feedRate;
+    if (pendingFeed >= 1) {
+      particles.push(makeInletTracer(-span / 2 - .35));
+      pendingFeed -= 1;
     }
-    advanceInlet(nextPhase);
+    let retained = 0;
+    for (const particle of particles) {
+      if (advanceParticle(particle, midpoint, nextPhase, limit)) particles[retained++] = particle;
+    }
+    particles.length = retained;
     phase = wrap(nextPhase, period);
   }
 
@@ -204,19 +231,14 @@ function render(canvas, context) {
       particle.y = displayedDepth(particle, x, phase);
       return particle;
     });
-    const start = inletStart();
-    const length = (stops.formedBy - .5) * span - start;
+    const start = -span / 2 - .35;
+    const inletLength = stops.formedBy * span + .35;
     const inletCount = Math.max(42, Math.round(count * stops.formedBy * .49));
-    inletParticles = Array.from({length: inletCount}, (_, i) => {
-      const x = start + length * (i + Math.random()) / inletCount;
-      const z = .045 + .91 * Math.random();
-      const brightness = Math.random();
-      const particle = {x, z, mode:Math.sin(Math.PI * z), rank:Math.random(),
-        shade:brightness < .27 ? 0 : brightness < .90 ? 1 : 2,
-        step:span / along * (.70 + .55 * Math.random())};
-      particle.y = displayedDepth(particle, x, phase);
-      return particle;
-    });
+    feedRate = Math.min(.70, .40 * count / along);
+    pendingFeed = 0;
+    for (let i = 0; i < inletCount; i++) {
+      particles.push(makeInletTracer(start + inletLength * (i + Math.random()) / inletCount));
+    }
     for (let i = 0; i < warmup; i++) {
       advance();
       paintTracers(context, width, height, buckets, palette);

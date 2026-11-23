@@ -1,15 +1,7 @@
 import {paintTracers, speedThresholds, tracerColors} from "./ilw-tracer-painter.js?v=20261124-2";
+import {mountLayeredHero} from "./ilw-layered-hero.js?v=20261124-1";
 
 const waveSpeed = .86;
-const liveTracerColors = [
-  "rgba(94,234,212,.5)", "rgba(94,234,212,.34)", "rgba(125,211,252,.22)",
-  "rgba(147,197,253,.28)", "rgba(186,230,253,.4)", "rgba(202,239,255,.54)",
-];
-const referenceColors = [
-  "rgba(246,172,104,.055)", "rgba(246,172,104,.12)", "rgba(246,172,104,.21)",
-  "rgba(246,172,104,.34)", "rgba(246,172,104,.46)", "rgba(246,172,104,.62)",
-];
-const comparisonColors = [...referenceColors, ...liveTracerColors];
 const regimes = {
   bo: {
     name: "BO",
@@ -90,30 +82,25 @@ function sizeCanvas(canvas, context) {
   return {width, height, resized};
 }
 
-function mount(figure) {
+function mountPreview(figure, preview) {
   const scene = figure.querySelector(".ilw-limit-tracers");
   const plot = figure.querySelector(".ilw-limit-profile");
   const context = scene?.getContext("2d"), graph = plot?.getContext("2d");
   if (!context) return;
   const depthText = figure.querySelector("[data-depth-value]");
   const nameText = figure.querySelector("[data-limit-name]");
-  const preview = figure.closest("[data-ilw-preview]");
   const slider = preview?.querySelector("#depth-progress");
   const errorText = preview?.querySelector("#difference");
   const note = preview?.querySelector("#note");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const liveHero = !preview;
-  const displacementFactor = liveHero ? .135 : .118;
-  const palette = liveHero ? comparisonColors : tracerColors;
-  const bins = palette.map(() => []);
+  const displacementFactor = .118;
+  const bins = tracerColors.map(() => []);
   const displayStep = 1000 / 60;
   const tracerStep = .58 / 60;
-  const sweepSeconds = liveHero ? 20 : 24;
+  const sweepSeconds = 24;
   const sweepStep = 1 / (60 * sweepSeconds);
   let regime = figure.dataset.ilwLimit;
-  const reference = liveHero ? regimes[regime].limit : null;
-  const liveOffset = liveHero ? referenceColors.length : 0;
-  let progress = 0, current = comparisonAt(regime, progress, liveHero), autoSweep = true;
+  let progress = 0, current = comparisonAt(regime, progress), autoSweep = true;
   let width = 0, height = 0, span = 0, particles = [];
   let chartHeight = graph ? chartScale() : 0;
   let raf = 0, lastFrame = 0, elapsed = 0, visible = false;
@@ -131,7 +118,7 @@ function mount(figure) {
   function drawStep(next) {
     for (const bin of bins) bin.length = 0;
     const scale = width / span;
-    const origin = width * (preview ? .5 : .61);
+    const origin = width * .5;
     const leftEdge = -origin / scale - .55, rightEdge = (width - origin) / scale + .55;
     for (const particle of particles) {
       const {x, y, z, mode} = particle;
@@ -147,22 +134,11 @@ function mount(figure) {
       const referenceSpeed = Math.hypot(vx + waveSpeed, (nextY - y) / tracerStep) / .155;
       let color = 0;
       while (color < speedThresholds.length && referenceSpeed >= speedThresholds[color]) color++;
-      const startX = origin + scale * x, endX = origin + scale * nextX;
-      if (reference) {
-        // Project the same tracer onto the limiting profile at both horizontal endpoints.
-        const referenceY = z - displacementFactor * reference(x) * mode;
-        const nextReferenceY = z - displacementFactor * reference(nextX) * mode;
-        const gap = height * Math.max(Math.abs(y - referenceY), Math.abs(nextY - nextReferenceY));
-        if (gap > .35) {
-          const warmth = Math.min(referenceColors.length - 1, Math.floor((gap - .35) / 1.4));
-          bins[warmth].push(startX, referenceY * height, endX, nextReferenceY * height);
-        }
-      }
-      bins[liveOffset + color].push(startX, y * height, endX, nextY * height);
+      bins[color].push(origin + scale * x, y * height, origin + scale * nextX, nextY * height);
       particle.x = nextX;
       particle.y = nextY;
     }
-    paintTracers(context, width, height, bins, palette);
+    paintTracers(context, width, height, bins);
     current = next;
   }
 
@@ -170,7 +146,7 @@ function mount(figure) {
     context.clearRect(0, 0, width, height);
     const count = Math.round(Math.min(1300, Math.max(360, width * height / 245)));
     particles = Array.from({length: count}, (_, i) => {
-      const x = ((i * .61803398875 + .11) % 1 - (preview ? .5 : .61)) * (span + 1.1);
+      const x = ((i * .61803398875 + .11) % 1 - .5) * (span + 1.1);
       const z = .025 + .95 * ((i * .41421356237 + .23) % 1);
       const mode = Math.sin(Math.PI * z);
       return {x, z, mode, slope: Math.PI * Math.cos(Math.PI * z),
@@ -269,7 +245,7 @@ function mount(figure) {
       elapsed -= displayStep;
       const next = autoSweep ? Math.min(1, progress + sweepStep) : progress;
       const changed = next !== progress;
-      drawStep(changed ? comparisonAt(regime, next, liveHero) : current);
+      drawStep(changed ? comparisonAt(regime, next) : current);
       progress = next;
       if (changed && (++graphSteps % 3 === 0 || progress === 1)) refreshLabels();
     }
@@ -298,9 +274,16 @@ function mount(figure) {
   resize.observe(scene);
   if (plot) resize.observe(plot);
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }).observe(figure);
-  if (preview) selectMode(new URLSearchParams(location.search).get("limit") === "kdv" ? "kdv" : "bo");
-  else refreshLabels();
+  selectMode(new URLSearchParams(location.search).get("limit") === "kdv" ? "kdv" : "bo");
   size();
 }
 
-for (const figure of document.querySelectorAll("[data-ilw-limit]")) mount(figure);
+for (const figure of document.querySelectorAll("[data-ilw-limit]")) {
+  const preview = figure.closest("[data-ilw-preview]");
+  if (preview) {
+    mountPreview(figure, preview);
+  } else {
+    const regime = figure.dataset.ilwLimit;
+    mountLayeredHero(figure, {waveSpeed, sizeCanvas, profileAt: progress => comparisonAt(regime, progress, true).profile});
+  }
+}

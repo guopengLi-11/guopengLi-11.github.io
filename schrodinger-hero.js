@@ -56,7 +56,8 @@ function render(canvas, context) {
   const thresholds = [.35, .7, 1.05, 1.4, 2.3];
   const opacityLevels = [.36, .68, 1];
   const buckets = opacityLevels.map(() => colors.map(() => []));
-  const goldThreshold = .07;
+  const goldThreshold = .061;
+  const shoulderThreshold = .115;
   const packetInterval = .78;
   const playheadStep = .0045;
   const interactionSlowdown = .52;
@@ -138,7 +139,7 @@ function render(canvas, context) {
       let color = 0;
       if (extra) {
         const overlap = mid.overlap / peakDensity;
-        if (overlap < .14 || interference >= goldThreshold) continue;
+        if (overlap < shoulderThreshold || interference >= goldThreshold) continue;
         color = overlap < .36 ? 1 : 0;
       } else if (interference >= goldThreshold) {
         color = coolColors.length + Math.min(goldColors.length - 1, Math.floor((interference - goldThreshold) / .20));
