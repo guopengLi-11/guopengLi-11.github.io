@@ -33,17 +33,46 @@ function ilwProfile(x) {
   return -inverseWidth * sinTheta * sum;
 }
 
+function smoothBetween(low, high, value) {
+  const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
+  return t * t * (3 - 2 * t);
+}
+
+function textBounds(element, endNode, endOffset) {
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  if (endNode) range.setEnd(endNode, endOffset);
+  return range.getBoundingClientRect();
+}
+
+function stageStops(hero, box, vertical) {
+  const name = textBounds(hero.querySelector("h1"));
+  const role = textBounds(hero.querySelector(".hero-role"));
+  const street = hero.querySelector(".hero-address p");
+  const roadLine = [...street.childNodes].find(node => node.textContent.startsWith("No. 9 Liangxiang East Road"));
+  const marker = roadLine?.textContent.indexOf(" · Li") ?? -1;
+  const address = textBounds(street, marker < 0 ? null : roadLine, marker + " · Li".length);
+  const startOf = rect => vertical ? (rect.top - box.top) / box.height : (rect.left - box.left) / box.width;
+  const endOf = rect => vertical ? (rect.bottom - box.top) / box.height : (rect.right - box.left) / box.width;
+  const formAt = Math.max(.035, Math.min(.22, startOf(name) + .014));
+  const formedBy = Math.min(.56, Math.max(formAt + .17, endOf(role) + .058));
+  const fadeAt = Math.min(.91, Math.max(formedBy + .23, endOf(address)));
+  return {formAt, formedBy, fadeAt};
+}
+
 function render(canvas, context) {
+  const hero = canvas.closest(".home-wave-hero");
   const buckets = tracerColors.map(() => []);
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-  const physicsStep = 1.18 / 60;
+  const physicsStep = .89 / 60;
   const displayStep = 1000 / 60;
   const backgroundCurrent = .088;
   const displacementScale = .174;
   const samples = Float64Array.from({length:2048}, (_, i) =>
     -displacementScale * ilwProfile(i * period / 2048));
-  let width = 0, height = 0, span = 0;
-  let phase = .42, particles = [];
+  let width = 0, height = 0, along = 0, across = 0, span = 0;
+  let vertical = false, stops;
+  let phase = .42, particles = [], sceneAge = 0;
   let lastFrame = 0, elapsed = 0, request = 0, visible = false;
 
   function displacement(x) {
@@ -55,51 +84,87 @@ function render(canvas, context) {
     return first + (location - floor) * (second - first);
   }
 
-  function horizontalVelocity(particle, heightOffset) {
-    const thickness = 1 + heightOffset * particle.slope;
-    // This incompressible kinematic field deforms fluid-depth labels using U.
-    return waveSpeed - (waveSpeed - backgroundCurrent) / thickness;
+  function fraction(x) {
+    return .5 + x / span;
+  }
+
+  function deformationGain(x, formed) {
+    const progress = fraction(x);
+    return formed * smoothBetween(stops.formAt, stops.formedBy, progress) *
+      (1 - smoothBetween(stops.fadeAt, 1, progress));
+  }
+
+  // The window only changes the displayed kinematic flow. The ILW wave above
+  // still translates at its exact phase speed.
+  function horizontalVelocity(particle, x, time, formed) {
+    const gain = deformationGain(x, formed);
+    const thickness = 1 + displacement(x - time) * particle.slope;
+    const velocity = waveSpeed - (waveSpeed - backgroundCurrent) / thickness;
+    return backgroundCurrent + gain * (velocity - backgroundCurrent);
+  }
+
+  function displayedDepth(particle, x, time, formed) {
+    return particle.z + deformationGain(x, formed) * displacement(x - time) * particle.mode;
+  }
+
+  function appendSegment(bucket, x, y, nextX, nextY) {
+    const from = along * fraction(x), to = along * fraction(nextX);
+    if (vertical) bucket.push(across * y, from, across * nextY, to);
+    else bucket.push(from, across * y, to, across * nextY);
   }
 
   function advance() {
-    const nextPhase = phase + waveSpeed * physicsStep;
+    const dt = physicsStep * (.66 + .34 * smoothBetween(0, 4.5, sceneAge));
+    const nextPhase = phase + waveSpeed * dt;
     const midpoint = (phase + nextPhase) / 2;
+    const formed = smoothBetween(.65, 5.2, sceneAge);
+    // The soft front moves across the canvas once. Afterwards the flow
+    // continues indefinitely and only individual offscreen tracers recycle.
+    const front = .095 + 1.04 * smoothBetween(0, 9.5, sceneAge);
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
-    const scale = width / span;
     for (const particle of particles) {
-      const {x, y, z, mode} = particle;
-      const first = horizontalVelocity(particle, displacement(x - phase));
-      const midX = x + first * physicsStep / 2;
-      const speedX = horizontalVelocity(particle, displacement(midX - midpoint));
-      const nextX = x + speedX * physicsStep;
+      const {x, y, rank} = particle;
+      const first = horizontalVelocity(particle, x, phase, formed);
+      const midX = x + first * dt / 2;
+      const speedX = horizontalVelocity(particle, midX, midpoint, formed);
+      const nextX = x + speedX * dt;
       if (nextX < -limit || nextX >= limit) {
         particle.x = nextX < -limit ? limit : -limit;
-        particle.y = z + displacement(particle.x - nextPhase) * mode;
+        particle.y = displayedDepth(particle, particle.x, nextPhase, formed);
         continue;
       }
-      const nextY = z + displacement(nextX - nextPhase) * mode;
-      const speed = Math.hypot(speedX, (nextY - y) / physicsStep * height * span / width);
-      let color = 0;
-      while (color < speedThresholds.length && speed / .21 >= speedThresholds[color]) color++;
-      buckets[color].push(width / 2 + scale * x, height * y, width / 2 + scale * nextX, height * nextY);
+      const nextY = displayedDepth(particle, nextX, nextPhase, formed);
       particle.x = nextX;
       particle.y = nextY;
+
+      const f = fraction(x);
+      const entry = .29 + .71 * smoothBetween(.018, stops.formedBy, f);
+      const fading = 1 - smoothBetween(stops.fadeAt, 1, f);
+      const revealed = 1 - smoothBetween(front - .055, front + .055, f);
+      if (rank > entry * fading * revealed) continue;
+      const speed = Math.hypot(speedX, (nextY - y) / dt * across * span / along);
+      let color = 0;
+      while (color < speedThresholds.length && speed / .21 >= speedThresholds[color]) color++;
+      appendSegment(buckets[color], x, y, nextX, nextY);
     }
     phase = wrap(nextPhase, period);
   }
 
   function reset() {
-    const warmup = 40;
+    const warmup = 30;
     phase -= waveSpeed * physicsStep * warmup;
     context.clearRect(0, 0, width, height);
-    const count = Math.round(Math.min(1600, Math.max(680, width * height / 325)));
+    const count = Math.round(Math.min(1780, Math.max(750, width * height / 265)));
+    const formed = smoothBetween(.65, 5.2, sceneAge);
     particles = Array.from({length:count}, (_, i) => {
       const q = (i * .41421356237 + .23) % 1;
       const z = i % 3 ? .12 + .78 * q : .02 + .96 * q;
       const x = ((i * .61803398875 + .11) % 1 - .5) * (span + 1.2);
-      const mode = Math.sin(Math.PI * z);
-      return {x,z,mode,slope:Math.PI * Math.cos(Math.PI * z), y:z + displacement(x - phase) * mode};
+      const particle = {x, z, mode:Math.sin(Math.PI * z), slope:Math.PI * Math.cos(Math.PI * z),
+        rank:(i * .7548776662467 + .13) % 1};
+      particle.y = displayedDepth(particle, x, phase, formed);
+      return particle;
     });
     for (let i = 0; i < warmup; i++) {
       advance();
@@ -110,12 +175,23 @@ function render(canvas, context) {
   function size() {
     const box = canvas.getBoundingClientRect();
     if (!box.width || !box.height) return;
+    const stacked = matchMedia("(max-width: 680px)").matches;
+    stops = stageStops(hero, box, stacked);
     const ratio = Math.min(devicePixelRatio || 1, 2);
     const w = Math.round(box.width * ratio), h = Math.round(box.height * ratio);
-    if (width === box.width && height === box.height && canvas.width === w && canvas.height === h) return;
+    if (width === box.width && height === box.height && vertical === stacked &&
+        canvas.width === w && canvas.height === h) return;
+    const initial = !width;
     width = box.width;
     height = box.height;
-    span = Math.max(6.9, width / height * 3.6);
+    vertical = stacked;
+    along = vertical ? height : width;
+    across = vertical ? width : height;
+    span = Math.max(6.9, along / across * 3.6);
+    if (initial) {
+      phase = (stops.formedBy - .5) * span;
+      if (reduced.matches) sceneAge = 9.5;
+    }
     canvas.width = w;
     canvas.height = h;
     context.setTransform(w / width, 0, 0, h / height, 0, 0);
@@ -128,6 +204,7 @@ function render(canvas, context) {
     lastFrame = timestamp;
     while (elapsed >= displayStep) {
       elapsed -= displayStep;
+      sceneAge = Math.min(9.5, sceneAge + 1 / 60);
       advance();
       paintTracers(context, width, height, buckets);
     }
@@ -148,6 +225,7 @@ function render(canvas, context) {
   reduced.addEventListener("change", sync);
   document.addEventListener("visibilitychange", sync);
   new ResizeObserver(() => { size(); sync(); }).observe(canvas);
+  document.fonts?.ready.then(size);
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }).observe(canvas);
   size();
 }

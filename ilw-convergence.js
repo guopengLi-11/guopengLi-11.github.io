@@ -83,8 +83,8 @@ function sizeCanvas(canvas, context) {
 function mount(figure) {
   const scene = figure.querySelector(".ilw-limit-tracers");
   const plot = figure.querySelector(".ilw-limit-profile");
-  const context = scene.getContext("2d"), graph = plot.getContext("2d");
-  if (!context || !graph) return;
+  const context = scene?.getContext("2d"), graph = plot?.getContext("2d");
+  if (!context) return;
   const depthText = figure.querySelector("[data-depth-value]");
   const nameText = figure.querySelector("[data-limit-name]");
   const preview = figure.closest("[data-ilw-preview]");
@@ -99,7 +99,7 @@ function mount(figure) {
   let regime = figure.dataset.ilwLimit;
   let progress = 0, current = comparisonAt(regime, progress), autoSweep = true;
   let width = 0, height = 0, span = 0, particles = [];
-  let chartHeight = chartScale();
+  let chartHeight = graph ? chartScale() : 0;
   let raf = 0, lastFrame = 0, elapsed = 0, visible = false;
   let graphSteps = 0;
 
@@ -114,14 +114,16 @@ function mount(figure) {
 
   function drawStep(next) {
     for (const bin of bins) bin.length = 0;
-    const margin = span / 2 + .55, scale = width / span;
+    const scale = width / span;
+    const origin = width * (preview ? .5 : .61);
+    const leftEdge = -origin / scale - .55, rightEdge = (width - origin) / scale + .55;
     for (const particle of particles) {
       const {x, y, z, mode} = particle;
       const midpoint = x + tracerStep * advection(particle, x, current.profile) / 2;
       const vx = (advection(particle, midpoint, current.profile) + advection(particle, midpoint, next.profile)) / 2;
       const nextX = x + tracerStep * vx;
-      if (nextX < -margin) {
-        particle.x = nextX + 2 * margin;
+      if (nextX < leftEdge) {
+        particle.x = nextX + (rightEdge - leftEdge);
         particle.y = z - displacementFactor * next.profile(particle.x) * mode;
         continue;
       }
@@ -129,7 +131,7 @@ function mount(figure) {
       const referenceSpeed = Math.hypot(vx + waveSpeed, (nextY - y) / tracerStep) / .155;
       let color = 0;
       while (color < speedThresholds.length && referenceSpeed >= speedThresholds[color]) color++;
-      bins[color].push(width / 2 + scale * x, y * height, width / 2 + scale * nextX, nextY * height);
+      bins[color].push(origin + scale * x, y * height, origin + scale * nextX, nextY * height);
       particle.x = nextX;
       particle.y = nextY;
     }
@@ -141,7 +143,7 @@ function mount(figure) {
     context.clearRect(0, 0, width, height);
     const count = Math.round(Math.min(1300, Math.max(360, width * height / 245)));
     particles = Array.from({length: count}, (_, i) => {
-      const x = ((i * .61803398875 + .11) % 1 - .5) * (span + 1.1);
+      const x = ((i * .61803398875 + .11) % 1 - (preview ? .5 : .61)) * (span + 1.1);
       const z = .025 + .95 * ((i * .41421356237 + .23) % 1);
       const mode = Math.sin(Math.PI * z);
       return {x, z, mode, slope: Math.PI * Math.cos(Math.PI * z),
@@ -151,6 +153,7 @@ function mount(figure) {
   }
 
   function drawProfile() {
+    if (!graph) return;
     const size = sizeCanvas(plot, graph);
     if (!size) return;
     const {width: w, height: h} = size;
@@ -182,7 +185,7 @@ function mount(figure) {
 
   function refreshLabels() {
     drawProfile();
-    depthText.textContent = current.depthLabel;
+    if (depthText) depthText.textContent = current.depthLabel;
     if (slider) {
       slider.value = String(Math.round(progress * 1000));
       slider.setAttribute("aria-valuetext", current.depthLabel);
@@ -266,7 +269,7 @@ function mount(figure) {
   document.addEventListener("visibilitychange", sync);
   const resize = new ResizeObserver(() => { size(); sync(); });
   resize.observe(scene);
-  resize.observe(plot);
+  if (plot) resize.observe(plot);
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); }).observe(figure);
   if (preview) selectMode(new URLSearchParams(location.search).get("limit") === "kdv" ? "kdv" : "bo");
   else refreshLabels();
