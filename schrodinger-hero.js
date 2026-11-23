@@ -50,13 +50,15 @@ function render(canvas, context) {
   const opacityLevels = [.36, .68, 1];
   const buckets = opacityLevels.map(() => colors.map(() => []));
   const packetInterval = .78;
-  const physicsStep = .0045;
+  const playheadStep = .0045;
+  const interactionSlowdown = .52;
   const displayStep = 1000 / 60;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const velocity = {};
   const seedSample = {};
   let width, height, scale, originX, packets;
   let firstTime, lastTime, speedReference, cohortCount, tracersPerCohort;
+  let meetingTime, overlapWidth;
   let cohorts = [];
   let randomState = 1295587;
   let lastFrame = 0, elapsed = 0, frameRequest = 0;
@@ -83,25 +85,36 @@ function render(canvas, context) {
     tracer.life = 145 + 220 * random();
   }
 
-  function placeCohort(cohort, time) {
+  // Slow the display clock near each encounter while retaining the flow of
+  // newly arriving pairs. The velocity field still uses physical time.
+  function modelTime(playhead) {
+    return playhead - interactionSlowdown * overlapWidth *
+      Math.tanh((playhead - meetingTime) / overlapWidth);
+  }
+
+  function placeCohort(cohort, playhead) {
+    const time = modelTime(playhead);
     const states = packets.map(packet => packetAtTime(packet, time));
-    cohort.time = time;
+    cohort.playhead = playhead;
     for (const tracer of cohort.tracers) spawn(tracer, states);
   }
 
   function advance() {
     for (const level of buckets) for (const bucket of level) bucket.length = 0;
     for (const cohort of cohorts) {
-      const {time} = cohort;
-      if (time >= lastTime) {
-        placeCohort(cohort, firstTime + (time - lastTime));
+      const {playhead} = cohort;
+      if (playhead >= lastTime) {
+        placeCohort(cohort, firstTime + (playhead - lastTime));
         continue;
       }
       // The two packets in each cohort interfere coherently. The displayed
       // cohorts are independent, staggered encounters, not one periodic state.
+      const time = modelTime(playhead);
+      const nextTime = modelTime(playhead + playheadStep);
+      const dt = nextTime - time;
       const start = packets.map(packet => packetAtTime(packet, time));
-      const middle = packets.map(packet => packetAtTime(packet, time + physicsStep / 2));
-      const edgeTime = Math.min(time - firstTime, lastTime - time);
+      const middle = packets.map(packet => packetAtTime(packet, time + dt / 2));
+      const edgeTime = Math.min(playhead - firstTime, lastTime - playhead);
       const level = edgeTime < .18 ? 0 : edgeTime < .40 ? 1 : 2;
 
       for (const tracer of cohort.tracers) {
@@ -111,8 +124,8 @@ function render(canvas, context) {
           spawn(tracer, start);
           continue;
         }
-        const midX = x + physicsStep / 2 * initial.jx / initial.density;
-        const midY = y + physicsStep / 2 * initial.jy / initial.density;
+        const midX = x + dt / 2 * initial.jx / initial.density;
+        const midY = y + dt / 2 * initial.jy / initial.density;
         const mid = waveAt(midX, midY, middle, velocity);
         const ux = mid.jx / mid.density, uy = mid.jy / mid.density;
         const speed = Math.hypot(ux, uy);
@@ -121,8 +134,8 @@ function render(canvas, context) {
           spawn(tracer, middle);
           continue;
         }
-        tracer.x += ux * physicsStep;
-        tracer.y += uy * physicsStep;
+        tracer.x += ux * dt;
+        tracer.y += uy * dt;
 
         const px = originX + scale * x, py = height / 2 - scale * y;
         if (px < -4 || px > width + 4 || py < -4 || py > height + 4) continue;
@@ -130,7 +143,7 @@ function render(canvas, context) {
         while (color < thresholds.length && speed / speedReference >= thresholds[color]) color++;
         buckets[level][color].push(px, py, originX + scale * tracer.x, height / 2 - scale * tracer.y);
       }
-      cohort.time += physicsStep;
+      cohort.playhead += playheadStep;
     }
   }
 
@@ -170,9 +183,16 @@ function render(canvas, context) {
       {x: .12, y: .56, kx: -rightSpeed, ky: -angle, sigma, phase: .73},
     ];
     speedReference = Math.sqrt(leftSpeed * rightSpeed);
-    firstTime = -ingressTime - .78;
+    const [first, second] = packets;
+    const dx = second.x - first.x, dy = second.y - first.y;
+    const vx = first.kx - second.kx, vy = first.ky - second.ky;
+    const relativeSpeed = Math.hypot(vx, vy);
+    meetingTime = (dx * vx + dy * vy) / (relativeSpeed * relativeSpeed);
+    overlapWidth = 2.6 * sigma / relativeSpeed;
+    const padding = interactionSlowdown * overlapWidth;
+    firstTime = -ingressTime - .78 - padding;
     const exitTime = Math.max((right + 1) / leftSpeed, (left + 1) / rightSpeed);
-    cohortCount = Math.ceil((exitTime + .7 - firstTime) / packetInterval);
+    cohortCount = Math.ceil((exitTime + .7 + padding - firstTime) / packetInterval);
     lastTime = firstTime + cohortCount * packetInterval;
     const total = Math.min(2200, Math.max(1250, Math.round(width * height / 180)));
     tracersPerCohort = Math.max(88, Math.floor(total / cohortCount));
@@ -184,10 +204,10 @@ function render(canvas, context) {
     const duration = lastTime - firstTime;
     randomState = 1295587;
     cohorts = Array.from({length: cohortCount}, (_, index) => {
-      const time = -.12 + index * packetInterval;
-      const wrappedTime = firstTime + (time - firstTime) % duration;
-      const cohort = {time: 0, tracers: Array.from({length: tracersPerCohort}, () => ({}))};
-      placeCohort(cohort, wrappedTime - warmup * physicsStep);
+      const playhead = meetingTime - .12 + index * packetInterval;
+      const wrappedTime = firstTime + (playhead - firstTime) % duration;
+      const cohort = {playhead: 0, tracers: Array.from({length: tracersPerCohort}, () => ({}))};
+      placeCohort(cohort, wrappedTime - warmup * playheadStep);
       return cohort;
     });
     for (let i = 0; i < warmup; i++) {
