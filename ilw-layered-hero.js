@@ -32,7 +32,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   const bins = colors.particles.map(() => []);
   const shearColor = colors.particles.length - 1;
   let width = 0, height = 0, scale = 1, spacing = 0, trainLength = 0, phase = 0;
-  let age = 0, profile = profileAt(0), background, lowerWater, interfaceLight;
+  let age = 0, motionTime = 0, profile = profileAt(0), background, lowerWater, interfaceLight;
   let particles = [], eddies = [], interfacePoints = new Float64Array(0);
   let frameId = 0, lastTime, lag = 0, visible = false;
 
@@ -62,6 +62,19 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     return z + displacement(x, wavePhase) * Math.sin(Math.PI * z);
   }
 
+  function displayedDepth(p, x, y, wavePhase, time) {
+    // Neighbors share a soft wavering motion, with a smaller individual drift.
+    const relativeAngle = turn * (x - wavePhase) / spacing;
+    const shared = .0038 * Math.sin(2 * relativeAngle + 6 * p.z + .9 * time)
+      + .0018 * Math.sin(3 * relativeAngle - 5 * p.z - .57 * time);
+    const individual = p.drift * Math.sin(p.driftPhase + p.driftRate * time);
+    return y + p.mode * (shared + individual);
+  }
+
+  function orbitRadius(p, angle) {
+    return 1 + p.bend * Math.sin(2 * angle + p.bendPhase);
+  }
+
   function traceEddies(nextPhase) {
     const right = width / scale;
     for (const eddy of eddies) {
@@ -72,14 +85,17 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const onScreen = center <= right + margin;
       for (const p of eddy.particles) {
         const nextAngle = wrap(p.angle + p.spin * waveTimeStep, turn);
-        const nextX = nextCenter + p.rx * Math.cos(nextAngle);
-        const z = eddy.depth + p.ry * Math.sin(nextAngle);
+        const radius = orbitRadius(p, nextAngle);
+        const nextOffsetX = radius * p.rx * Math.cos(nextAngle);
+        const nextX = nextCenter + nextOffsetX;
+        const z = eddy.depth + radius * p.ry * Math.sin(nextAngle);
         const nextY = eddyDepth(nextX, z, nextPhase);
         if (onScreen) {
-          const x = center + p.rx * Math.cos(p.angle);
+          const x = center + p.offsetX;
           bins[p.shade].push(x * scale, p.y * height, nextX * scale, nextY * height);
         }
         p.angle = nextAngle;
+        p.offsetX = nextOffsetX;
         p.y = nextY;
       }
     }
@@ -89,6 +105,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     for (const bin of bins) bin.length = 0;
     const edge = .5;
     const end = width / scale + edge;
+    const nextTime = motionTime + waveTimeStep;
     for (const p of particles) {
       const a = displacement(p.x, phase);
       const velocity = waveSpeed + (p.current - waveSpeed) / (1 + a * p.slope);
@@ -98,17 +115,21 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       if (nextX <= -edge || nextX >= end) {
         p.x = -edge + wrap(nextX + edge, end + edge);
         p.y = p.z + displacement(p.x, nextPhase) * p.mode;
+        p.shownY = displayedDepth(p, p.x, p.y, nextPhase, nextTime);
         continue;
       }
       const nextY = p.z + displacement(nextX, nextPhase) * p.mode;
+      const nextShownY = displayedDepth(p, nextX, nextY, nextPhase, nextTime);
       const ySpeed = Math.abs(nextY - p.y) * height;
       const color = p.near && p.shade >= 3 && ySpeed > .15 ? shearColor : p.shade;
-      bins[color].push(p.x * scale, p.y * height, nextX * scale, nextY * height);
+      bins[color].push(p.x * scale, p.shownY * height, nextX * scale, nextShownY * height);
       p.x = nextX;
       p.y = nextY;
+      p.shownY = nextShownY;
     }
     traceEddies(nextPhase);
     paintTracers(ink, width, height, bins, colors.particles);
+    motionTime = nextTime;
   }
 
   function layer(from, below) {
@@ -149,17 +170,30 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   function seed() {
     const count = Math.round(Math.min(2940, Math.max(1010, width * height / 126)));
     const span = width / scale + 1;
+    const clusterPhase = turn * Math.random();
+    const detailPhase = turn * Math.random();
+    const clusterStart = Math.sin(clusterPhase);
+    const detailStart = Math.sin(detailPhase);
     particles = Array.from({length: count}, (_, i) => {
-      const near = Math.random() < .76;
-      const x = -.5 + span * (i + Math.random()) / count;
+      const position = (i + Math.random()) / count;
+      const cluster = Math.sin(2 * turn * position + clusterPhase);
+      const detail = Math.sin(5 * turn * position + detailPhase);
+      const shifted = position + .026 * (cluster - clusterStart) + .007 * (detail - detailStart);
+      const near = Math.random() < .73 + .10 * cluster;
+      const x = -.5 + span * shifted;
       const z = near
         ? interfaceLevel + (Math.random() + Math.random() + Math.random() - 1.5) * .09
         : .025 + .95 * Math.random();
       const mode = Math.sin(Math.PI * z);
       const tone = Math.random();
       const shade = near ? (tone < .32 ? 1 : tone < .81 ? 2 : 3) : (tone < .75 ? 0 : 1);
-      return {x, z, mode, shade, near, slope: Math.PI * Math.cos(Math.PI * z),
-        current: .20 + .18 * Math.random(), y: z + displacement(x, phase) * mode};
+      const p = {
+        x, z, mode, shade, near, slope: Math.PI * Math.cos(Math.PI * z), current: .20 + .18 * Math.random(),
+        y: z + displacement(x, phase) * mode, drift: .0016 + .0027 * Math.random(),
+        driftPhase: turn * Math.random(), driftRate: .65 + .6 * Math.random(),
+      };
+      p.shownY = displayedDepth(p, x, p.y, phase, motionTime);
+      return p;
     });
   }
 
@@ -173,9 +207,12 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const spin = direction * (1.42 + 1.60 * (1 - radial)) * (.86 + .28 * Math.random());
       const tone = Math.random();
       const shade = radial < .70 && tone > .62 ? shearColor : tone > .22 ? 3 : 2;
-      const x = phase + offset + rx * Math.cos(angle);
-      const z = depth + ry * Math.sin(angle);
-      return {angle, rx, ry, spin, shade, y: eddyDepth(x, z, phase)};
+      const p = {angle, rx, ry, spin, shade, bend: .06 + .06 * Math.random(), bendPhase: turn * Math.random()};
+      const strength = orbitRadius(p, angle);
+      p.offsetX = strength * rx * Math.cos(angle);
+      const z = depth + strength * ry * Math.sin(angle);
+      p.y = eddyDepth(phase + offset + p.offsetX, z, phase);
+      return p;
     });
     return {offset, depth, radius, particles};
   }
@@ -221,6 +258,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     interfaceLight.addColorStop(1, "rgba(" + tint + ",.051)");
     sampleProfile();
     phase = wrap(phase - waveSpeed * waveTimeStep * 22, trainLength);
+    motionTime -= waveTimeStep * 22;
     seed();
     seedEddies();
     for (let i = 0; i < 22; i++) {
