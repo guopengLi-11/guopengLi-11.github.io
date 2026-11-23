@@ -4,7 +4,7 @@ const stepSeconds = 1 / 60;
 const waveTimeStep = .88 * stepSeconds;
 const sweepSeconds = 20;
 const interfaceLevel = .43;
-const projection = .147;
+const projection = .162;
 const fieldSize = 512;
 const waveCopies = 3;
 const turn = 2 * Math.PI;
@@ -13,6 +13,24 @@ const colors = {
   tint: "71,176,158",
   particles: ["rgba(135,157,174,.20)", "rgba(149,173,192,.30)", "rgba(83,203,176,.30)",
     "rgba(94,234,212,.46)", "rgba(251,191,60,.67)"],
+};
+// Use the same vertical scale and hues. The thinner BO band and tighter
+// eddies emphasize its sharper well, while KdV has a broader soft band.
+const appearance = {
+  bo: {
+    bands: [.102, .064, .034, .015, .006],
+    eddies: [
+      {offset: -.87, depth: .548, radius: .96, depthRadius: .093, spin: 1.12},
+      {offset: 1.10, depth: .323, radius: .69, depthRadius: .053, spin: 1.04},
+    ],
+  },
+  kdv: {
+    bands: [.108, .077, .051, .032, .017],
+    eddies: [
+      {offset: -1.62, depth: .562, radius: 1.55, depthRadius: .061, spin: .77},
+      {offset: 1.84, depth: .337, radius: 1.07, depthRadius: .038, spin: .82},
+    ],
+  },
 };
 
 function wrap(value, length) {
@@ -27,6 +45,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   const ink = trails.getContext("2d");
   if (!ink) return;
 
+  const style = appearance[figure.dataset.ilwLimit];
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
   const field = new Float64Array(fieldSize);
   const bins = colors.particles.map(() => []);
@@ -40,7 +59,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     // Repeat isolated passages in the picture. Join only their outer tails
     // so the analytic profile near each crest retains its shape.
     const half = spacing / 2;
-    const joinWidth = Math.min(1.4, half / 5);
+    const joinWidth = Math.min(.9, half / 5);
     for (let i = 0; i < fieldSize; i++) {
       const x = Math.abs(spacing * i / fieldSize - half);
       const value = profile(x);
@@ -161,14 +180,14 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       layer(offset * height);
     }
     context.fillStyle = interfaceLight;
-    for (const thickness of [.102, .070, .045, .026, .014]) {
+    for (const thickness of style.bands) {
       layer(-thickness * height, thickness * height);
     }
     context.drawImage(trails, 0, 0, width, height);
   }
 
   function seed() {
-    const count = Math.round(Math.min(2940, Math.max(1010, width * height / 126)));
+    const count = Math.round(Math.min(3800, Math.max(1500, width * height / 101)));
     const span = width / scale + 1;
     const clusterPhase = turn * Math.random();
     const detailPhase = turn * Math.random();
@@ -179,7 +198,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const cluster = Math.sin(2 * turn * position + clusterPhase);
       const detail = Math.sin(5 * turn * position + detailPhase);
       const shifted = position + .026 * (cluster - clusterStart) + .007 * (detail - detailStart);
-      const near = Math.random() < .73 + .10 * cluster;
+      const near = Math.random() < .64 + .11 * cluster;
       const x = -.5 + span * shifted;
       const z = near
         ? interfaceLevel + (Math.random() + Math.random() + Math.random() - 1.5) * .09
@@ -189,7 +208,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const shade = near ? (tone < .32 ? 1 : tone < .81 ? 2 : 3) : (tone < .75 ? 0 : 1);
       const p = {
         x, z, mode, shade, near, slope: Math.PI * Math.cos(Math.PI * z), current: .20 + .18 * Math.random(),
-        y: z + displacement(x, phase) * mode, drift: .0016 + .0027 * Math.random(),
+        y: z + displacement(x, phase) * mode, drift: (near ? .0016 : .0026) + (near ? .0027 : .0066) * Math.random(),
         driftPhase: turn * Math.random(), driftRate: .65 + .6 * Math.random(),
       };
       p.shownY = displayedDepth(p, x, p.y, phase, motionTime);
@@ -197,16 +216,21 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     });
   }
 
-  function seedEddy(offset, depth, radius, depthRadius, direction, count) {
+  function seedEddy(crest, shape, direction, count) {
     // Orbit tracers visualize local circulation in the frame of each wave.
+    const offset = crest + shape.offset;
+    const depth = shape.depth + .025 * Math.random();
+    const radius = shape.radius * (.93 + .14 * Math.random());
     const particles = Array.from({length: count}, () => {
       const radial = .16 + .84 * Math.sqrt(Math.random());
       const angle = turn * Math.random();
       const rx = radius * radial * (.83 + .17 * Math.random());
-      const ry = depthRadius * radial * (.85 + .15 * Math.random());
-      const spin = direction * (1.42 + 1.60 * (1 - radial)) * (.86 + .28 * Math.random());
+      const ry = shape.depthRadius * radial * (.85 + .15 * Math.random());
+      const spin = direction * shape.spin * (1.42 + 1.60 * (1 - radial)) * (.86 + .28 * Math.random());
       const tone = Math.random();
-      const shade = radial < .70 && tone > .62 ? shearColor : tone > .22 ? 3 : 2;
+      let shade = tone > .27 ? 3 : 2;
+      if (tone < .13) shade = 1;
+      else if (radial < .70 && tone > .62) shade = shearColor;
       const p = {angle, rx, ry, spin, shade, bend: .06 + .06 * Math.random(), bendPhase: turn * Math.random()};
       const strength = orbitRadius(p, angle);
       p.offsetX = strength * rx * Math.cos(angle);
@@ -224,8 +248,8 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       const crest = i * spacing;
       const direction = i === 1 ? -1 : 1;
       eddies.push(
-        seedEddy(crest - 1.12, .565 + .025 * Math.random(), 1.12 + .22 * Math.random(), .083, direction, count),
-        seedEddy(crest + 1.45, .327 + .025 * Math.random(), .74 + .16 * Math.random(), .050, -direction, Math.round(count * .60))
+        seedEddy(crest, style.eddies[0], direction, count),
+        seedEddy(crest, style.eddies[1], -direction, Math.round(count * .60))
       );
     }
   }

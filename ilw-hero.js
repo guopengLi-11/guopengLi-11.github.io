@@ -43,10 +43,11 @@ function render(canvas, context) {
   const physicsStep = 1.18 / 60;
   const displaySeconds = 1 / 60;
   const displayStep = 1000 * displaySeconds;
-  const openingSeconds = .65;
+  const openingSeconds = .45;
   const formationSeconds = 3.6;
   const animationReadyAt = openingSeconds + formationSeconds;
-  const backgroundCurrent = .088;
+  const initialDeformation = .18;
+  const referenceCurrent = .088;
   const displacementScale = .174;
   const samples = Float64Array.from({length:2048}, (_, i) =>
     -displacementScale * ilwProfile(i * period / 2048));
@@ -70,10 +71,12 @@ function render(canvas, context) {
     return t * t * (3 - 2 * t);
   }
 
-  function horizontalVelocity(particle, heightOffset, formed) {
+  function deformation(blend) {
+    return initialDeformation + (1 - initialDeformation) * blend;
+  }
+
+  function horizontalVelocity(particle, heightOffset, current = particle.current) {
     const thickness = 1 + heightOffset * particle.slope;
-    const current = backgroundCurrent + (1 - formed) * (particle.openingCurrent - backgroundCurrent);
-    // Once formed, recover the original kinematic field of the traveling wave.
     return waveSpeed - (waveSpeed - current) / thickness;
   }
 
@@ -85,17 +88,18 @@ function render(canvas, context) {
     const nextPhase = phase + waveSpeed * physicsStep;
     const midpoint = (phase + nextPhase) / 2;
     const nextDrift = driftTime + physicsStep;
-    const formed = formation(age);
-    const halfFormed = formation((age + nextAge) / 2);
-    const nextFormed = formation(nextAge);
+    const formed = deformation(formation(age));
+    const halfFormed = deformation(formation((age + nextAge) / 2));
+    const nextBlend = formation(nextAge);
+    const nextFormed = deformation(nextBlend);
     for (const bucket of buckets) bucket.length = 0;
     const limit = span / 2 + .6;
     for (const particle of particles) {
       const {x, y, z, mode, shownY} = particle;
-      const first = horizontalVelocity(particle, formed * displacement(x - phase), formed);
+      const first = horizontalVelocity(particle, formed * displacement(x - phase));
       const midX = x + first * physicsStep / 2;
       const midOffset = halfFormed * displacement(midX - midpoint);
-      const speedX = horizontalVelocity(particle, midOffset, halfFormed);
+      const speedX = horizontalVelocity(particle, midOffset);
       const nextX = x + speedX * physicsStep;
       if (nextX < -limit || nextX >= limit) {
         particle.x = nextX < -limit ? limit : -limit;
@@ -105,12 +109,15 @@ function render(canvas, context) {
       }
       const nextY = z + nextFormed * displacement(nextX - nextPhase) * mode;
       const nextShownY = visibleDepth(particle, nextY, nextDrift);
-      let tone = particle.shade;
-      if (particle.colorRank < nextFormed) {
-        // As the colors form, measure the wave current without the faster
-        // opening drift, so the entrance does not look like a gold crest.
-        const waveVelocity = halfFormed === 1 ? speedX : horizontalVelocity(particle, midOffset, 1);
-        const speed = Math.hypot(waveVelocity, (nextY - y) / physicsStep * height * span / width);
+      const grayHighlight = particle.colorRank < midOffset * 9 ? 1 : 0;
+      let tone = Math.min(2, particle.shade + grayHighlight);
+      if (particle.colorRank < nextBlend) {
+        // Color the wave at its original reference current. The faster
+        // straight flow can then stay visible without turning gold.
+        const waveVelocity = horizontalVelocity(particle, midOffset, referenceCurrent);
+        const referenceX = x + waveVelocity * physicsStep;
+        const referenceY = z + nextFormed * displacement(referenceX - nextPhase) * mode;
+        const speed = Math.hypot(waveVelocity, (referenceY - y) / physicsStep * height * span / width);
         let color = 0;
         while (color < thresholds.length && speed / .21 >= thresholds[color]) color++;
         tone = 3 + color;
@@ -151,7 +158,7 @@ function render(canvas, context) {
     driftTime -= physicsStep * warmup;
     context.clearRect(0, 0, width, height);
     const count = Math.round(1.5 * Math.min(1600, Math.max(680, width * height / 325)));
-    const formed = formation(age);
+    const formed = deformation(formation(age));
     particles = Array.from({length:count}, (_, i) => {
       const q = (i * .41421356237 + .23 + .042 * (Math.random() - .5)) % 1;
       const z = i % 3 ? .12 + .78 * q : .02 + .96 * q;
@@ -163,7 +170,7 @@ function render(canvas, context) {
         x, y, z, mode, slope: Math.PI * Math.cos(Math.PI * z),
         shade: shade < .23 ? 0 : shade < .88 ? 1 : 2,
         colorRank: Math.random(),
-        openingCurrent: (.73 + .46 * Math.random()) * span / (width * physicsStep),
+        current: Math.min(.62, (.43 + .28 * Math.random()) * span / (width * physicsStep)),
         drift: (.0035 + .005 * Math.random()) * mode,
         driftRate: 2.2 + 3.6 * Math.random(),
         driftPhase: 2 * Math.PI * Math.random(),

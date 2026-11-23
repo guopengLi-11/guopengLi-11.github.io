@@ -1,12 +1,12 @@
 import {paintTracers, speedThresholds, tracerColors} from "./ilw-tracer-painter.js?v=20261124-2";
-import {mountLayeredHero} from "./ilw-layered-hero.js?v=20261124-4";
+import {mountLayeredHero} from "./ilw-layered-hero.js?v=20261124-5";
 
 const waveSpeed = .86;
 const regimes = {
   bo: {
     name: "BO",
     initialDepth: 1.2,
-    liveInitialDepth: .45,
+    liveInitialDepth: 5.4,
     endpoint: "∞",
     depth(initial, remaining) { return initial / remaining ** 2; },
     limit(x) { return -2 * waveSpeed / (1 + (waveSpeed * x) ** 2); },
@@ -15,7 +15,7 @@ const regimes = {
   kdv: {
     name: "KdV",
     initialDepth: 3,
-    liveInitialDepth: 4.5,
+    liveInitialDepth: 1.55,
     endpoint: "0",
     depth(initial, remaining) { return initial * remaining ** 2; },
     limit(x) { return -(3 * waveSpeed / 2) / Math.cosh(Math.sqrt(waveSpeed) * x / 2) ** 2; },
