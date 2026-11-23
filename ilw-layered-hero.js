@@ -8,12 +8,19 @@ const projection = .162;
 const fieldSize = 512;
 const waveCopies = 3;
 const turn = 2 * Math.PI;
+const inflowMargin = 4.3;
+const arrivalFade = .50;
+const departureFade = .90;
 const colors = {
   water: ["#10151b", "#0a0d12", "#06090d"],
   tint: "71,176,158",
   particles: ["rgba(135,157,174,.20)", "rgba(149,173,192,.30)", "rgba(83,203,176,.30)",
     "rgba(94,234,212,.46)", "rgba(251,191,60,.67)"],
 };
+const entrainedColors = [
+  "rgba(163,181,197,.12)", "rgba(163,181,197,.23)",
+  "rgba(163,181,197,.36)", "rgba(163,181,197,.54)",
+];
 // The coordinate stretch and eddy shapes distinguish the wells while
 // retaining the same water and tracer colors.
 const appearance = {
@@ -50,8 +57,10 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
   const style = appearance[figure.dataset.ilwLimit];
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
   const field = new Float64Array(fieldSize);
-  const bins = colors.particles.map(() => []);
+  const palette = [...colors.particles, ...entrainedColors];
+  const bins = palette.map(() => []);
   const shearColor = colors.particles.length - 1;
+  const entrainmentPoint = {x: 0, z: 0};
   let width = 0, height = 0, scale = 1, spacing = 0, trainLength = 0, phase = 0;
   let age = 0, motionTime = 0, profile = profileAt(0), background, lowerWater, interfaceLight;
   let particles = [], eddies = [], interfacePoints = new Float64Array(0);
@@ -101,6 +110,54 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
     return 1 + p.bend * Math.sin(2 * angle + p.bendPhase);
   }
 
+  function entrainmentAt(p, age, point) {
+    const orbitTime = age - p.approach;
+    // Slow the target orbit backward from entry with matching angular speed at entry.
+    const rotationTime = orbitTime < 0 ? .42 * orbitTime / (.42 - orbitTime) : orbitTime;
+    const angle = p.entryAngle + p.spin * rotationTime;
+    const radius = orbitRadius(p, angle);
+    const orbitX = radius * p.rx * Math.cos(angle);
+    const orbitZ = radius * p.ry * Math.sin(angle);
+    if (orbitTime >= 0) {
+      point.x = orbitX;
+      point.z = orbitZ;
+      return;
+    }
+    const progress = Math.max(0, (age - p.delay) / (p.approach - p.delay));
+    const blend = progress * progress * (3 - 2 * progress);
+    const flightX = p.entryDistance - p.transport * age;
+    point.x = flightX + blend * (orbitX - flightX);
+    point.z = p.flightDepth + blend * (orbitZ - p.flightDepth);
+  }
+
+  function traceEntrainment(eddy, nextPhase) {
+    const right = width / scale;
+    // The inflow extends ahead of the orbit, so wrap it beyond the full inflow.
+    const center = wrap(phase + eddy.offset + inflowMargin, trainLength) - inflowMargin;
+    const nextCenter = center + nextPhase - phase;
+    for (const p of eddy.entrained) {
+      const nextAge = p.age + waveTimeStep;
+      const recycled = nextAge >= p.lifetime;
+      const age = recycled ? nextAge - p.lifetime : nextAge;
+      entrainmentAt(p, age, entrainmentPoint);
+      const x = center + p.offsetX, nextX = nextCenter + entrainmentPoint.x;
+      const nextY = eddyDepth(nextX, eddy.depth + entrainmentPoint.z, nextPhase);
+      if (!recycled && Math.max(x, nextX) >= 0 && Math.min(x, nextX) <= right) {
+        const midAge = (p.age + age) / 2;
+        const fade = Math.min(1, midAge / arrivalFade, (p.lifetime - midAge) / departureFade);
+        if (fade > .09) {
+          const gray = Math.min(entrainedColors.length - 1, Math.floor(fade * entrainedColors.length));
+          bins[colors.particles.length + gray].push(
+            x * scale, screenDepth(p.y), nextX * scale, screenDepth(nextY)
+          );
+        }
+      }
+      p.age = age;
+      p.offsetX = entrainmentPoint.x;
+      p.y = nextY;
+    }
+  }
+
   function traceEddies(nextPhase) {
     const right = width / scale;
     for (const eddy of eddies) {
@@ -124,6 +181,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
         p.offsetX = nextOffsetX;
         p.y = nextY;
       }
+      traceEntrainment(eddy, nextPhase);
     }
   }
 
@@ -154,7 +212,7 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       p.shownY = nextShownY;
     }
     traceEddies(nextPhase);
-    paintTracers(ink, width, height, bins, colors.particles);
+    paintTracers(ink, width, height, bins, palette);
     motionTime = nextTime;
   }
 
@@ -245,7 +303,31 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
       p.y = eddyDepth(phase + offset + p.offsetX, z, phase);
       return p;
     });
-    return {offset, depth, radius, particles};
+    return {offset, depth, radius, particles, shape, direction};
+  }
+
+  function seedEntrainment(eddy, count) {
+    return Array.from({length: count}, (_, i) => {
+      const radial = .46 + .44 * Math.random();
+      const delay = .55 + .35 * Math.random();
+      const approach = delay + 2.85 + .65 * Math.random();
+      const spin = eddy.direction * eddy.shape.spin * (1.57 + 1.1 * (1 - radial));
+      const turnCount = 2 + .55 * Math.random();
+      const lifetime = approach + turn * turnCount / Math.abs(spin) + departureFade;
+      const p = {
+        rx: eddy.radius * radial, ry: eddy.shape.depthRadius * radial,
+        bend: .06 + .06 * Math.random(), bendPhase: turn * Math.random(),
+        spin, delay, approach, lifetime, age: lifetime * (i + Math.random()) / count,
+        entryAngle: eddy.direction * (.38 + .4 * Math.random()),
+        entryDistance: 3.30 + .45 * Math.random() + .1 * eddy.radius,
+        transport: waveSpeed - (.20 + .15 * Math.random()),
+        flightDepth: .09 * (Math.random() - .5) + (eddy.depth > interfaceLevel ? .04 : -.04),
+      };
+      entrainmentAt(p, p.age, entrainmentPoint);
+      p.offsetX = entrainmentPoint.x;
+      p.y = eddyDepth(phase + eddy.offset + p.offsetX, eddy.depth + entrainmentPoint.z, phase);
+      return p;
+    });
   }
 
   function seedEddies() {
@@ -258,6 +340,10 @@ export function mountLayeredHero(figure, {profileAt, waveSpeed, sizeCanvas}) {
         seedEddy(crest, style.eddies[0], direction, count),
         seedEddy(crest, style.eddies[1], -direction, Math.round(count * .60))
       );
+    }
+    const inflowCount = width > 680 ? 24 : 18;
+    for (const [i, eddy] of eddies.entries()) {
+      eddy.entrained = seedEntrainment(eddy, i % 2 ? Math.round(inflowCount * .67) : inflowCount);
     }
   }
 
