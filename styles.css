@@ -104,6 +104,9 @@
     .nav-list a:hover, .nav-list a.is-active { background: var(--blue-soft); color: var(--blue); }
 
     .hero {
+      --hero-ink: #173f5a;
+      --hero-heading: #255678;
+      --hero-letter-shadow: 0 1px 1px rgba(245,250,253,.84), 0 0 3px rgba(242,248,253,.64);
       position: relative; overflow: hidden;
       min-height: 300px; display: grid; align-items: center;
       background: #dfe7e9 url("assets/guopeng-coast.jpg") center 86% / cover no-repeat;
@@ -113,20 +116,24 @@
       width: min(var(--content), calc(100% - 42px)); margin: auto; padding: 22px 0;
       display: grid; grid-template-columns: minmax(0,1fr) 330px; align-items: center; gap: 72px;
     }
-    .hero-copy { max-width: 710px; color: #102631; }
+    .hero-copy { max-width: 710px; color: var(--hero-ink); text-shadow: var(--hero-letter-shadow); }
     .eyebrow { margin: 0 0 18px; color: rgba(255,255,255,.74); font-size: .76rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
     .hero h1 {
       display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
-      margin: 0; font-family: "Libre Caslon Display", Georgia, serif;
+      margin: 0; color: var(--hero-heading); font-family: "Libre Caslon Display", Georgia, serif;
       font-size: clamp(1.45rem, 2.6vw, 1.85rem); font-weight: 400; letter-spacing: -.025em; line-height: 1.15;
     }
-    .hero h1 .chinese-name-mark { width: 108px; height: auto; align-self: center; filter: brightness(0); opacity: .88; }
+    .hero h1 .chinese-name-mark {
+      width: 108px; height: auto; align-self: center;
+      filter: brightness(0) invert(28%) sepia(29%) saturate(1250%) hue-rotate(162deg)
+        drop-shadow(0 0 1px rgba(245,250,253,.76));
+    }
     .hero-role { margin: 18px 0 6px; font-size: clamp(1.08rem, 2vw, 1.35rem); font-weight: 600; }
-    .hero-affiliation { margin: 0; color: #182e3a; }
+    .hero-affiliation { margin: 0; }
     .hero-email { margin: 8px 0 0; }
     .hero-email span { color: inherit; }
-    .hero-address { margin: 0; padding-left: 38px; border-left: 1px solid rgba(16,38,49,.30); color: #102631; font-style: normal; }
-    .hero-address h2 { margin: 0 0 12px; color: inherit; font-family: "Libre Caslon Display", Georgia, serif; font-size: 1.6rem; font-weight: 400; }
+    .hero-address { margin: 0; padding-left: 38px; border-left: 1px solid rgba(23,63,90,.3); color: var(--hero-ink); text-shadow: var(--hero-letter-shadow); font-style: normal; }
+    .hero-address h2 { margin: 0 0 12px; color: var(--hero-heading); font-family: "Libre Caslon Display", Georgia, serif; font-size: 1.6rem; font-weight: 400; }
     .hero-address p { margin: 0; font-size: .88rem; line-height: 1.75; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 33px; }
     .button {
@@ -300,7 +307,7 @@
       }
       .hero { min-height: 370px; background-position: 58% 86%; }
       .hero-inner { grid-template-columns: 1fr; gap: 30px; }
-      .hero-address { padding: 22px 0 0; border-top: 1px solid rgba(16,38,49,.30); border-left: 0; }
+      .hero-address { padding: 22px 0 0; border-top: 1px solid rgba(23,63,90,.3); border-left: 0; }
       .hero h1 { font-size: clamp(1.4rem,7vw,1.75rem); }
       .non-maths-section .prose p { text-align: left; }
       .section { padding: 68px 0; }
