@@ -77,7 +77,7 @@ function render(canvas, context) {
     -displacementScale * ilwProfile(i * period / 2048));
   let width = 0, height = 0, along = 0, across = 0, span = 0;
   let vertical = false, stops;
-  let phase = 0, particles = [];
+  let phase = 0, particles = [], inletParticles = [];
   let lastFrame = 0, elapsed = 0, request = 0, visible = false;
 
   function displacement(x) {
@@ -91,6 +91,14 @@ function render(canvas, context) {
 
   function fraction(x) {
     return .5 + x / span;
+  }
+
+  function inletWeight(progress) {
+    return 1 - smoothBetween(stops.formAt, stops.formedBy, progress);
+  }
+
+  function inletStart() {
+    return -span / 2 - .35;
   }
 
   function deformationGain(x) {
@@ -112,15 +120,34 @@ function render(canvas, context) {
     return particle.z + deformationGain(x) * displacement(x - time) * particle.mode;
   }
 
-  function appendSegment(bucket, x, y, nextX, nextY, tail) {
+  function appendSegment(bucket, x, y, nextX, nextY, tail = 0) {
     const from = along * fraction(x), to = along * fraction(nextX);
     const depthFrom = across * y, depthTo = across * nextY;
-    const length = Math.hypot(to - from, depthTo - depthFrom);
-    const stretch = tail / Math.max(.025, length);
+    const stretch = tail ? tail / Math.max(.025, Math.hypot(to - from, depthTo - depthFrom)) : 0;
     const tailStart = from - (to - from) * stretch;
     const tailDepth = depthFrom - (depthTo - depthFrom) * stretch;
     if (vertical) bucket.push(tailDepth, tailStart, depthTo, to);
     else bucket.push(tailStart, tailDepth, to, depthTo);
+  }
+
+  // Let each tracer re-enter from offscreen after its tail fades into the wave.
+  function advanceInlet(nextPhase) {
+    const start = inletStart();
+    const end = (stops.formedBy - .5) * span;
+    for (const particle of inletParticles) {
+      const {x, y, step, shade, rank} = particle;
+      const weight = inletWeight(fraction(x));
+      const nextX = x + step * (.60 + .40 * weight);
+      if (nextX >= end) {
+        particle.x = start + wrap(nextX - end, end - start);
+        particle.y = displayedDepth(particle, particle.x, nextPhase);
+        continue;
+      }
+      const nextY = displayedDepth(particle, nextX, nextPhase);
+      if (rank < weight) appendSegment(buckets[shade], x, y, nextX, nextY);
+      particle.x = nextX;
+      particle.y = nextY;
+    }
   }
 
   function advance() {
@@ -153,10 +180,10 @@ function render(canvas, context) {
       const wave = smoothBetween(.06, .52, gain);
       const core = smoothBetween(.39, .77, speed) * smoothBetween(.34, .70, gain);
       const color = tint < core ? 6 : tint < wave ? 3 : 0;
-      // At the slow inlet a subpixel step would look like a dot. Draw a short
-      // tail in the direction of travel while keeping the advection unchanged.
+      if (color === 0 && rank > entry * fading * (1 - inletWeight(f))) continue;
       appendSegment(buckets[color + shade], x, y, nextX, nextY, inletTrail * (1 - wave));
     }
+    advanceInlet(nextPhase);
     phase = wrap(nextPhase, period);
   }
 
@@ -174,6 +201,19 @@ function render(canvas, context) {
       const particle = {x, z, mode:Math.sin(Math.PI * z), slope:Math.PI * Math.cos(Math.PI * z),
         rank:(i * .7548776662467 + .13) % 1, tint:Math.random(),
         shade:brightness < .22 ? 0 : brightness < .9 ? 1 : 2, inletTrail:3.5 + 4.5 * Math.random()};
+      particle.y = displayedDepth(particle, x, phase);
+      return particle;
+    });
+    const start = inletStart();
+    const length = (stops.formedBy - .5) * span - start;
+    const inletCount = Math.max(42, Math.round(count * stops.formedBy * .49));
+    inletParticles = Array.from({length: inletCount}, (_, i) => {
+      const x = start + length * (i + Math.random()) / inletCount;
+      const z = .045 + .91 * Math.random();
+      const brightness = Math.random();
+      const particle = {x, z, mode:Math.sin(Math.PI * z), rank:Math.random(),
+        shade:brightness < .27 ? 0 : brightness < .90 ? 1 : 2,
+        step:span / along * (.70 + .55 * Math.random())};
       particle.y = displayedDepth(particle, x, phase);
       return particle;
     });
