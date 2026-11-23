@@ -15,12 +15,13 @@ function packetAtTime(packet, time) {
 // Evaluate the coherent sum and its spatial gradient at a single point.
 function waveAt(x, y, states, out) {
   let re = 0, im = 0, dxRe = 0, dxIm = 0, dyRe = 0, dyIm = 0;
-  let incoherentDensity = 0;
+  let incoherentDensity = 0, envelopeProduct = 1;
   for (const state of states) {
     const dx = x - state.x, dy = y - state.y;
     const distance = dx * dx + dy * dy;
     const amplitude = state.amplitude * Math.exp(-state.profile * distance / 2);
     incoherentDensity += amplitude * amplitude;
+    envelopeProduct *= amplitude;
     const phase = state.phase + state.kx * dx + state.ky * dy + state.chirp * distance / 2;
     const a = amplitude * Math.cos(phase);
     const b = amplitude * Math.sin(phase);
@@ -38,6 +39,7 @@ function waveAt(x, y, states, out) {
   out.im = im;
   out.density = density;
   out.incoherentDensity = incoherentDensity;
+  out.overlap = 2 * envelopeProduct;
   out.jx = re * dxIm - im * dxRe;
   out.jy = re * dyIm - im * dyRe;
   return out;
@@ -54,6 +56,7 @@ function render(canvas, context) {
   const thresholds = [.35, .7, 1.05, 1.4, 2.3];
   const opacityLevels = [.36, .68, 1];
   const buckets = opacityLevels.map(() => colors.map(() => []));
+  const goldThreshold = .07;
   const packetInterval = .78;
   const playheadStep = .0045;
   const interactionSlowdown = .52;
@@ -65,16 +68,18 @@ function render(canvas, context) {
   let firstTime, lastTime, speedReference, cohortCount, tracersPerCohort;
   let meetingTime, overlapWidth;
   let cohorts = [];
-  let randomState = 1295587;
+  let random, overlapRandom;
   let lastFrame = 0, elapsed = 0, frameRequest = 0;
   let visible = false, ready = false;
 
-  function random() {
-    randomState = (Math.imul(1664525, randomState) + 1013904223) >>> 0;
-    return randomState / 4294967296;
+  function seededRandom(seed) {
+    return () => {
+      seed = (Math.imul(1664525, seed) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
   }
 
-  function spawn(tracer, states) {
+  function spawn(tracer, states, random) {
     for (let i = 0; i < 12; i++) {
       const state = states[random() < .5 ? 0 : 1];
       const angle = 2 * Math.PI * random();
@@ -101,7 +106,47 @@ function render(canvas, context) {
     const time = modelTime(playhead);
     const states = packets.map(packet => packetAtTime(packet, time));
     cohort.playhead = playhead;
-    for (const tracer of cohort.tracers) spawn(tracer, states);
+    cohort.overlapTracers = null;
+    for (const tracer of cohort.tracers) spawn(tracer, states, random);
+  }
+
+  function trace(tracers, {start, middle, dt, level, peakDensity}, random, extra = false) {
+    for (const tracer of tracers) {
+      const {x, y} = tracer;
+      const initial = waveAt(x, y, start, velocity);
+      if (initial.density < 1e-6 || --tracer.life < 0) {
+        spawn(tracer, start, random);
+        continue;
+      }
+      const midX = x + dt / 2 * initial.jx / initial.density;
+      const midY = y + dt / 2 * initial.jy / initial.density;
+      const mid = waveAt(midX, midY, middle, velocity);
+      const ux = mid.jx / mid.density, uy = mid.jy / mid.density;
+      const speed = Math.hypot(ux, uy);
+      // Near interference nodes, replace the tracer instead of drawing a jump.
+      if (mid.density < 1e-6 || !Number.isFinite(speed) || speed > 25) {
+        spawn(tracer, middle, random);
+        continue;
+      }
+      tracer.x += ux * dt;
+      tracer.y += uy * dt;
+
+      const px = originX + scale * x, py = height / 2 - scale * y;
+      if (px < -4 || px > width + 4 || py < -4 || py > height + 4) continue;
+      // Positive cross terms mark constructive interference between the two packets.
+      const interference = (mid.density - mid.incoherentDensity) / peakDensity;
+      let color = 0;
+      if (extra) {
+        const overlap = mid.overlap / peakDensity;
+        if (overlap < .14 || interference >= goldThreshold) continue;
+        color = overlap < .36 ? 1 : 0;
+      } else if (interference >= goldThreshold) {
+        color = coolColors.length + Math.min(goldColors.length - 1, Math.floor((interference - goldThreshold) / .20));
+      } else {
+        while (color < thresholds.length && speed / speedReference >= thresholds[color]) color++;
+      }
+      buckets[level][color].push(px, py, originX + scale * tracer.x, height / 2 - scale * tracer.y);
+    }
   }
 
   function advance() {
@@ -122,38 +167,18 @@ function render(canvas, context) {
       const peakDensity = middle[0].amplitude ** 2 + middle[1].amplitude ** 2;
       const edgeTime = Math.min(playhead - firstTime, lastTime - playhead);
       const level = edgeTime < .18 ? 0 : edgeTime < .40 ? 1 : 2;
-
-      for (const tracer of cohort.tracers) {
-        const {x, y} = tracer;
-        const initial = waveAt(x, y, start, velocity);
-        if (initial.density < 1e-6 || --tracer.life < 0) {
-          spawn(tracer, start);
-          continue;
-        }
-        const midX = x + dt / 2 * initial.jx / initial.density;
-        const midY = y + dt / 2 * initial.jy / initial.density;
-        const mid = waveAt(midX, midY, middle, velocity);
-        const ux = mid.jx / mid.density, uy = mid.jy / mid.density;
-        const speed = Math.hypot(ux, uy);
-        // Near interference nodes, replace the tracer instead of drawing a jump.
-        if (mid.density < 1e-6 || !Number.isFinite(speed) || speed > 25) {
-          spawn(tracer, middle);
-          continue;
-        }
-        tracer.x += ux * dt;
-        tracer.y += uy * dt;
-
-        const px = originX + scale * x, py = height / 2 - scale * y;
-        if (px < -4 || px > width + 4 || py < -4 || py > height + 4) continue;
-        // Positive cross terms mark constructive interference between the two packets.
-        const interference = (mid.density - mid.incoherentDensity) / peakDensity;
-        let color = 0;
-        if (interference >= .07) {
-          color = coolColors.length + Math.min(goldColors.length - 1, Math.floor((interference - .07) / .20));
-        } else {
-          while (color < thresholds.length && speed / speedReference >= thresholds[color]) color++;
-        }
-        buckets[level][color].push(px, py, originX + scale * tracer.x, height / 2 - scale * tracer.y);
+      const step = {start, middle, dt, level, peakDensity};
+      trace(cohort.tracers, step, random);
+      if (Math.abs(time - meetingTime) < 1.6 * overlapWidth) {
+        // Sample extra tracers from the same wave density only near the encounter.
+        cohort.overlapTracers ??= Array.from({length: Math.round(tracersPerCohort * .56)}, () => {
+          const tracer = {};
+          spawn(tracer, start, overlapRandom);
+          return tracer;
+        });
+        trace(cohort.overlapTracers, step, overlapRandom, true);
+      } else {
+        cohort.overlapTracers = null;
       }
       cohort.playhead += playheadStep;
     }
@@ -214,7 +239,8 @@ function render(canvas, context) {
     context.clearRect(0, 0, width, height);
     const warmup = 29;
     const duration = lastTime - firstTime;
-    randomState = 1295587;
+    random = seededRandom(1295587);
+    overlapRandom = seededRandom(4179109);
     cohorts = Array.from({length: cohortCount}, (_, index) => {
       const playhead = meetingTime - .12 + index * packetInterval;
       const wrappedTime = firstTime + (playhead - firstTime) % duration;
