@@ -15,10 +15,12 @@ function packetAtTime(packet, time) {
 // Evaluate the coherent sum and its spatial gradient at a single point.
 function waveAt(x, y, states, out) {
   let re = 0, im = 0, dxRe = 0, dxIm = 0, dyRe = 0, dyIm = 0;
+  let incoherentDensity = 0;
   for (const state of states) {
     const dx = x - state.x, dy = y - state.y;
     const distance = dx * dx + dy * dy;
     const amplitude = state.amplitude * Math.exp(-state.profile * distance / 2);
+    incoherentDensity += amplitude * amplitude;
     const phase = state.phase + state.kx * dx + state.ky * dy + state.chirp * distance / 2;
     const a = amplitude * Math.cos(phase);
     const b = amplitude * Math.sin(phase);
@@ -35,17 +37,20 @@ function waveAt(x, y, states, out) {
   out.re = re;
   out.im = im;
   out.density = density;
+  out.incoherentDensity = incoherentDensity;
   out.jx = re * dxIm - im * dxRe;
   out.jy = re * dyIm - im * dyRe;
   return out;
 }
 
 function render(canvas, context) {
-  // One 1.1 px segment per step. Old pixels retain 93% of their opacity.
-  const colors = [
+  // One segment per step. Old pixels retain 93% of their opacity.
+  const coolColors = [
     "rgba(94,234,212,.5)", "rgba(94,234,212,.34)", "rgba(125,211,252,.22)",
-    "rgba(147,197,253,.28)", "rgba(186,230,253,.4)", "rgba(251,191,36,.5)"
+    "rgba(147,197,253,.28)", "rgba(186,230,253,.4)", "rgba(202,239,255,.54)"
   ];
+  const goldColors = ["rgba(233,167,64,.45)", "rgba(251,191,60,.67)", "rgba(255,218,130,.87)"];
+  const colors = [...coolColors, ...goldColors];
   const thresholds = [.35, .7, 1.05, 1.4, 2.3];
   const opacityLevels = [.36, .68, 1];
   const buckets = opacityLevels.map(() => colors.map(() => []));
@@ -114,6 +119,7 @@ function render(canvas, context) {
       const dt = nextTime - time;
       const start = packets.map(packet => packetAtTime(packet, time));
       const middle = packets.map(packet => packetAtTime(packet, time + dt / 2));
+      const peakDensity = middle[0].amplitude ** 2 + middle[1].amplitude ** 2;
       const edgeTime = Math.min(playhead - firstTime, lastTime - playhead);
       const level = edgeTime < .18 ? 0 : edgeTime < .40 ? 1 : 2;
 
@@ -139,8 +145,14 @@ function render(canvas, context) {
 
         const px = originX + scale * x, py = height / 2 - scale * y;
         if (px < -4 || px > width + 4 || py < -4 || py > height + 4) continue;
+        // Positive cross terms mark constructive interference between the two packets.
+        const interference = (mid.density - mid.incoherentDensity) / peakDensity;
         let color = 0;
-        while (color < thresholds.length && speed / speedReference >= thresholds[color]) color++;
+        if (interference >= .07) {
+          color = coolColors.length + Math.min(goldColors.length - 1, Math.floor((interference - .07) / .20));
+        } else {
+          while (color < thresholds.length && speed / speedReference >= thresholds[color]) color++;
+        }
         buckets[level][color].push(px, py, originX + scale * tracer.x, height / 2 - scale * tracer.y);
       }
       cohort.playhead += playheadStep;
@@ -152,12 +164,12 @@ function render(canvas, context) {
     context.fillStyle = "rgba(0,0,0,.07)";
     context.fillRect(0, 0, width, height);
     context.globalCompositeOperation = "source-over";
-    context.lineWidth = 1.1;
     for (let level = 0; level < buckets.length; level++) {
       context.globalAlpha = opacityLevels[level];
       for (let color = 0; color < colors.length; color++) {
         const segments = buckets[level][color];
         if (!segments.length) continue;
+        context.lineWidth = color < coolColors.length ? 1.1 : 1.45 + .15 * (color - coolColors.length);
         context.strokeStyle = colors[color];
         context.beginPath();
         for (let i = 0; i < segments.length; i += 4) {
