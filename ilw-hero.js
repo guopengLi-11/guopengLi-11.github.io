@@ -43,7 +43,7 @@ function render(canvas, context) {
   const physicsStep = 1.18 / 60;
   const displaySeconds = 1 / 60;
   const displayStep = 1000 * displaySeconds;
-  const openingSeconds = 1.4;
+  const openingSeconds = .65;
   const formationSeconds = 3.6;
   const animationReadyAt = openingSeconds + formationSeconds;
   const backgroundCurrent = .088;
