@@ -55,6 +55,7 @@
       --line: #d7e0e1;
       --shadow: 0 20px 55px rgba(19, 54, 69, .09);
       --content: 1160px;
+      --hero-min-height: 250px;
     }
 
     * { box-sizing: border-box; }
@@ -106,9 +107,26 @@
     .hero {
       --hero-ink: #fff;
       --hero-letter-shadow: 0 1px 2px #0a1721, 0 0 1px #08141d, 0 1px 5px rgba(8,20,29,.72);
-      position: relative; overflow: hidden;
-      min-height: 300px; display: grid; align-items: center;
-      background: #dfe7e9 url("assets/guopeng-coast.jpg") center 86% / cover no-repeat;
+      position: relative; overflow: hidden; isolation: isolate;
+      min-height: var(--hero-min-height); display: grid; align-items: center;
+      background: #0a0d12;
+    }
+    .home-wave-hero::before {
+      position: absolute; inset: 0; content: ""; pointer-events: none;
+      background-image: linear-gradient(#23303b 1px, transparent 1px),
+        linear-gradient(90deg, #23303b 1px, transparent 1px);
+      background-size: 56px 56px; background-position: center;
+      opacity: .43;
+      mask-image: radial-gradient(ellipse at center, #000 2%, transparent 78%);
+    }
+    .home-ilw-canvas {
+      position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .home-wave-hero::after {
+      position: absolute; inset: 0; content: ""; pointer-events: none;
+      background: radial-gradient(ellipse 58% 65% at 14% 50%, rgba(10,13,18,.56), transparent),
+        radial-gradient(ellipse 30% 61% at 84% 50%, rgba(10,13,18,.62), transparent);
     }
     .hero-inner {
       position: relative; z-index: 1;
@@ -279,7 +297,6 @@
     .footer-bottom { display: flex; justify-content: center; gap: 20px; padding: 0; text-align: center; font-size: .74rem; }
 
     @media (max-width: 930px) {
-      .hero { min-height: 320px; }
       .hero-inner { grid-template-columns: minmax(0,1fr) 280px; gap: 38px; }
       .section-head { grid-template-columns: 1fr; gap: 8px; }
       .about-grid { grid-template-columns: 1fr; gap: 28px; }
@@ -303,7 +320,9 @@
         min-width: 44px; min-height: 44px; padding: 4px 6px;
         white-space: nowrap;
       }
-      .hero { min-height: 370px; background-position: 58% 86%; }
+      .home-wave-hero::after {
+        background: linear-gradient(180deg, rgba(10,13,18,.45), rgba(10,13,18,.19) 50%, rgba(10,13,18,.46));
+      }
       .hero-inner { grid-template-columns: 1fr; gap: 30px; }
       .hero-address { padding: 22px 0 0; border-top: 1px solid rgba(255,255,255,.4); border-left: 0; }
       .hero h1 { font-size: clamp(1.4rem,7vw,1.75rem); }
@@ -335,7 +354,7 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 main { flex: 1; }
 .nav-list a[aria-current="page"] { background: var(--blue-soft); color: var(--blue); }
 .page-hero {
-  position: relative; overflow: hidden; min-height: 205px; display: grid; align-items: center;
+  position: relative; overflow: hidden; min-height: var(--hero-min-height); display: grid; align-items: center;
   background: linear-gradient(112deg, #4f6d7d 0%, #5a7685 52%, #647f8c 100%);
   color: #fff;
 }
@@ -474,7 +493,6 @@ footer { margin-top: auto; }
   .home-intro-grid { grid-template-columns: 1fr; gap: 28px; }
 }
 @media (max-width: 680px) {
-  .page-hero { min-height: 230px; }
   .page-hero-inner { width: min(100% - 28px,var(--content)); padding: 24px 0; }
   .math-motif { right: -90px; width: 300px; opacity: .65; }
   .chalk-reference-motif { right: -155px; width: 430px; opacity: .24; }
