@@ -133,6 +133,9 @@
       width: min(var(--content), calc(100% - 42px)); margin: auto; padding: 22px 0;
       display: grid; grid-template-columns: minmax(0,1fr) 330px; align-items: center; gap: 72px;
     }
+    @media (min-width: 931px) {
+      .home-wave-hero .hero-inner { grid-template-columns: minmax(0,1fr) fit-content(45%); }
+    }
     .hero-copy { max-width: 710px; color: var(--hero-ink); text-shadow: var(--hero-letter-shadow); }
     .eyebrow { margin: 0 0 18px; color: rgba(255,255,255,.74); font-size: .76rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
     .hero h1 {
