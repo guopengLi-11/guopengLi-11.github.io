@@ -140,6 +140,16 @@
         column-gap: max(72px, calc(100px - var(--address-offset)));
       }
       .home-wave-hero .hero-address { transform: translateX(var(--address-offset)); }
+      .home-wave-hero .hero-inner.is-address-aligned {
+        --address-gap: 112px;
+        grid-template-columns: minmax(0, calc(var(--address-divider) - var(--address-gap))) minmax(0, 1fr);
+        column-gap: var(--address-gap);
+      }
+      .home-wave-hero .is-address-aligned .hero-address {
+        width: max-content;
+        max-width: calc(var(--address-room) - 24px);
+        transform: none;
+      }
     }
     .hero-copy { max-width: 710px; color: var(--hero-ink); text-shadow: var(--hero-letter-shadow); }
     .eyebrow { margin: 0 0 18px; color: rgba(255,255,255,.74); font-size: .76rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }

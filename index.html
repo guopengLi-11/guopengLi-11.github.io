@@ -18,7 +18,7 @@
   <link rel="canonical" href="https://guopengli-11.github.io/">
   <link rel="icon" href="/favicon.ico?v=black-g" sizes="16x16 32x32 48x48">
   <link rel="icon" href="/favicon.svg?v=black-g" type="image/svg+xml" sizes="any">
-  <link rel="stylesheet" href="styles.css?v=20261124-18">
+  <link rel="stylesheet" href="styles.css?v=20261124-19">
   <link rel="stylesheet" href="title-fonts.css?v=20260813-1">
   <script type="application/ld+json">
   {
@@ -96,6 +96,46 @@
     </div>
   </footer>
   <script src="site.js"></script>
+  <script>
+    (() => {
+      const home = document.querySelector('.nav-list a[aria-current="page"]');
+      const hero = document.querySelector('.home-wave-hero');
+      const inner = hero.querySelector('.hero-inner');
+      const desktop = matchMedia('(min-width: 931px)');
+      let frame = 0;
+      let lastDivider, lastRoom;
+
+      function alignAddress() {
+        if (!desktop.matches) return;
+        const {left: anchor} = home.getBoundingClientRect();
+        const divider = anchor - inner.getBoundingClientRect().left;
+        const room = hero.getBoundingClientRect().right - anchor;
+        if (divider === lastDivider && room === lastRoom) return;
+        lastDivider = divider;
+        lastRoom = room;
+        inner.style.setProperty('--address-divider', divider + 'px');
+        inner.style.setProperty('--address-room', room + 'px');
+        inner.classList.add('is-address-aligned');
+      }
+
+      function scheduleAlignment() {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          alignAddress();
+        });
+      }
+
+      alignAddress();
+      window.addEventListener('resize', scheduleAlignment);
+      document.fonts?.ready.then(scheduleAlignment);
+      if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(scheduleAlignment);
+        observer.observe(home.closest('.nav-list'));
+        observer.observe(hero);
+      }
+    })();
+  </script>
   <script type="module" src="ilw-hero.js?v=20261124-12"></script>
 </body>
 </html>
